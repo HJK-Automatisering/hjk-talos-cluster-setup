@@ -1,0 +1,17 @@
+
+# Ruby og Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
+.bundle/
+vendor/
+
+# Editor/IDE
+*.swp
+*.swo
+*.idea/
+*.vscode/
+
+# OS-specifikke filer
+.DS_Store
+Thumbs.db

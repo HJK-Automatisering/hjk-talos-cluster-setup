@@ -1,0 +1,11 @@
+
+title: HJK Talos Cluster Setup
+description: Dokumentation for opsætning af bare-metal Kubernetes med Talos, Cilium, Rook Ceph, Argo CD og workflows.
+theme: just-the-docs
+
+baseurl: "/hjk-talos-cluster-setup"
+url: "https://hjk-automatisering.github.io"
+
+just_the_docs:
+  search_enabled: true
+  color_scheme: dark
