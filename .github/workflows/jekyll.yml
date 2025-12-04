@@ -6,6 +6,17 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Nødvendige permissions for Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# GitHub Pages anbefaler concurrency for at undgå overlappende deploys
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,17 +31,14 @@ jobs:
       - run: bundle install
       - run: bundle exec jekyll build --trace
 
+      # Upload artefaktet som Pages skal deploye
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
   deploy:
     needs: build
-    permissions:
-      pages: write
-      id-token: write
     runs-on: ubuntu-latest
-    # Simpelt miljønavn – ingen url
     environment: github-pages
     steps:
       - id: deployment
