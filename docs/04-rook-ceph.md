@@ -1,9 +1,4 @@
 ---
-
-## docs/04-rook-ceph.md
-
-```markdown
----
 layout: default
 title: Installation af Rook Ceph
 nav_order: 5

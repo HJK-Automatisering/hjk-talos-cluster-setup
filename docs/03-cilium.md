@@ -1,9 +1,4 @@
 ---
-
-## docs/03-cilium.md
-
-```markdown
----
 layout: default
 title: Installation af Cilium
 nav_order: 4

@@ -1,9 +1,4 @@
 ---
-
-## docs/90-troubleshooting.md
-
-```markdown
----
 layout: default
 title: Fejlfinding og FAQ
 nav_order: 90

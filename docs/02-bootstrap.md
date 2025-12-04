@@ -1,9 +1,4 @@
 ---
-
-## docs/02-bootstrap.md
-
-```markdown
----
 layout: default
 title: Bootstrap af cluster
 nav_order: 3
