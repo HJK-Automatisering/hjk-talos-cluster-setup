@@ -18,3 +18,4 @@ Installer nødvendige værktøjer:
 
 ```bash
 brew install talosctl kubectl helm
+```
