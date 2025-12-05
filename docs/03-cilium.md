@@ -7,34 +7,40 @@ nav_order: 4
 # Installation af Cilium
 
 Cilium fungerer som CNI (Container Network Interface) i klyngen og erstatter den indbyggede Talos CNI.  
-Dette kapitel beskriver installationen af **Cilium** ved hjælp af de Helm charts og scripts, der findes i projektmappen `Talos/Bash/charts/cilium`.
+Dette kapitel beskriver installationen af **Cilium** ved hjælp af de Helm-kommandoer og scripts, der findes i projektmappen `Talos/Bash/charts/cilium`.
 
-Installationen består af tre trin:
+Installationen består af tre hovedtrin:
 
-1. Forberedelse af værdier (values.yaml)  
-2. Installation via Helm  
-3. Validering af netværk og konnektivitet  
+1. Opret og tilpas `values.yaml` til Cilium  
+2. Installér Cilium via Helm (eller via `upgrade.sh`)  
+3. Valider netværk og konnektivitet  
+
+> **Bemærk:** Talos’ indbyggede CNI og kube-proxy er slået fra via Talos-patchen `Talos/Bash/cilium.yaml`, som anvendes tidligere i Talos-konfigurationen. Det er en forudsætning for, at Cilium kan overtage netværket.
 
 ---
 
-# 1. Cilium Helm values (values.yaml)
+# 1. Opret Cilium Helm values (values.yaml)
 
-Projektet inkluderer en komplet Cilium konfiguration i:
+Hvis filen ikke allerede findes i projektet, kan den genereres fra Ciliums egen chart-definition.
 
+Gå til Cilium chart-mappen i dit projekt:
+
+```bash
+cd Talos/Bash/charts/cilium
 ```
-Talos/Bash/charts/cilium/values.yaml
+
+Hent standardværdierne fra den ønskede Cilium-version og gem dem som `values.yaml`:
+
+```bash
+helm show values cilium/cilium --version 1.18.4 > values.yaml
 ```
 
-Her sættes bl.a.:
+> **Bemærk:** Versionen (`1.18.4`) er et eksempel. Brug den version, I ønsker at standardisere på.  
+> Det anbefales at fastlåse en version og committe `values.yaml` til repository’et, så installationen bliver reproducerbar.
 
-- IPAM (kube-router)
-- Hubble aktivering
-- BPF indstillinger
-- Operator settings
-- Native-routing mode
-- ENCAP/DirectRouting
+Herefter kan `values.yaml` tilpasses efter jeres miljø (netværk, Hubble, IPAM osv.).
 
-Eksempeludsnit:
+Eksempeludsnit (for illustration):
 
 ```yaml
 hubble:
@@ -45,61 +51,79 @@ k8sServiceHost: 127.0.0.1
 k8sServicePort: 7445
 ```
 
-Tilpas kun values-filen, hvis jeres netværksmiljø kræver det.
+Når filen er oprettet og tilpasset, vil den blive brugt i de næste trin.
 
 ---
 
 # 2. Installation af Cilium via Helm
 
-Fra jeres WSL2-arbejdsstation:
+## 2.1 Tilføj Cilium repo
 
-## Tilføj Cilium repo
+Dette udføres typisk én gang pr. miljø:
 
 ```bash
 helm repo add cilium https://helm.cilium.io/
 helm repo update
 ```
 
-## Installér Cilium chartet fra projektmappen
+## 2.2 Installér Cilium med jeres `values.yaml`
+
+Fra mappen `Talos/Bash/charts/cilium`:
 
 ```bash
-helm upgrade --install cilium ./charts/cilium   --namespace kube-system   --values ./charts/cilium/values.yaml
+cd Talos/Bash/charts/cilium
+
+helm upgrade cilium cilium/cilium --install   --version 1.18.4 --namespace kube-system -f values.yaml
 ```
 
-> Bemærk: Vi bruger `upgrade --install` så kommandoen både kan installere og opdatere.
+> Vi bruger `upgrade --install`, så kommandoen både kan installere og opdatere samme release.
 
-Talos/Bash indeholder også et script til opgradering:
+Projektet indeholder også et script til opgradering og gentagen installation:
 
 ```bash
-./Bash/charts/cilium/upgrade.sh
+bash upgrade.sh
 ```
+
+Indholdet af `upgrade.sh` er:
+
+```bash
+helm upgrade cilium cilium/cilium --install --version 1.18.4 --namespace kube-system -f values.yaml
+```
+
+Du kan derfor nøjes med at vedligeholde version og konfiguration i `values.yaml` og evt. i scriptet, og blot køre:
+
+```bash
+bash upgrade.sh
+```
+
+ved fremtidige opgraderinger.
 
 ---
 
 # 3. Validering af installation
 
-## Tjek pods
+## 3.1 Tjek Cilium pods
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=cilium
 kubectl -n kube-system get pods -l k8s-app=cilium-operator
 ```
 
-Alle pods skal blive **Ready**.
+Alle Cilium-relaterede pods skal blive **Ready**.
 
-## Tjek Cilium status
+## 3.2 Tjek Cilium status
 
 ```bash
 cilium status
 ```
 
-Du bør se:
+Du bør se at:
 
-- CNI OK  
-- Hubble Relay OK  
-- Datapath Healthy  
+- CNI er initialiseret korrekt  
+- Datapath er **Healthy**  
+- Eventuelle Hubble-komponenter er oppe, hvis de er aktiveret  
 
-## Test netværkskonnektivitet
+## 3.3 Test netværkskonnektivitet
 
 ```bash
 cilium connectivity test
@@ -107,23 +131,25 @@ cilium connectivity test
 
 Dette tester bl.a.:
 
-- DNS
-- Pod-to-pod trafik  
-- Pod-to-service trafik  
+- DNS-opslag  
+- Pod-til-pod trafik  
+- Pod-til-service trafik  
 - Node routing  
 
 ---
 
 # 4. Aktivering af Hubble UI (valgfrit)
 
-Hvis Hubble er slået til i values.yaml, kan UI’en eksponeres lokalt:
+Hvis Hubble UI er aktiveret i `values.yaml`, kan den eksponeres lokalt:
 
 ```bash
 kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```
 
-Åbn i browser:
+Åbn derefter en browser på din egen maskine:
 
 ```
 http://localhost:12000
 ```
+
+Her kan du se live netværkstrafik, flows og fejlsøgning.

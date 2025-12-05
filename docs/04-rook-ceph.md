@@ -6,10 +6,10 @@ nav_order: 5
 
 # Installation af Rook Ceph (single-node)
 
-Rook Ceph anvendes som distributed storage backend for Kubernetes.  
-**I en single-node klynge kan Ceph dog kun bruges til test, udvikling og interne PoC'er**, da Ceph normalt kræver flere noder for replikering og HA.
+Rook Ceph bruges som storage-backend til Kubernetes.  
+I en **single-node** konfiguration fungerer Ceph **kun som test-/udviklingsmiljø**, da der ikke er redundans eller høj tilgængelighed.
 
-Dette dokument beskriver installationen baseret på de filer, der ligger i:
+Denne dokumentation beskriver en **ren, professionel og reproducerbar installation**, baseret på jeres projektstruktur:
 
 ```
 Talos/Bash/charts/rook-ceph/
@@ -20,14 +20,14 @@ Talos/Bash/charts/rook-ceph-cluster/
 
 # 1. Forudsætninger
 
-Før installation skal følgende være på plads:
+Før installationen:
 
-- Talos cluster er bootstrap'et og kører stabilt  
-- Cilium er installeret og operativ  
-- Node har rå blok-enheder tilgængelige til Ceph OSD'er  
-- `kubectl` og `helm` virker fra WSL2  
+- Talos-klyngen er installeret og bootstrap’et
+- Cilium kører stabilt
+- Node har én eller flere rå diske til Ceph OSD’er (ikke formaterede)
+- `kubectl`, `helm` og `talosctl` fungerer i WSL2
 
-Test:
+Verificér:
 
 ```bash
 kubectl get nodes
@@ -36,20 +36,43 @@ kubectl -n kube-system get pods
 
 ---
 
-# 2. Installér Rook Ceph Operator
-
-Projektet indeholder Helm-opsætning for Rook operatoren.
-
-Værdierne findes her:
-
-```
-Talos/Bash/charts/rook-ceph/values.yaml
-```
-
-Installer operatoren:
+# 2. Opsætning af Helm repository
 
 ```bash
-helm upgrade --install rook-ceph ./charts/rook-ceph   --namespace rook-ceph   --create-namespace   --values ./charts/rook-ceph/values.yaml
+helm repo add rook-release https://charts.rook.io/release
+helm repo update
+```
+
+Tjek tilgængelige charts:
+
+```bash
+helm search repo rook
+```
+
+---
+
+# 3. Generér operatorens values.yaml
+
+Navigér til operatorens chart-mappe:
+
+```bash
+cd Talos/Bash/charts/rook-ceph
+```
+
+Generér Helm-chart værdier:
+
+```bash
+helm show values rook-release/rook-ceph --version v1.18.8 > values.yaml
+```
+
+> Fastlås gerne versionen i projektet og commit filen.
+
+---
+
+# 4. Installér Rook Ceph operator
+
+```bash
+helm upgrade --install rook-ceph ./charts/rook-ceph --namespace rook-ceph --create-namespace --values ./charts/rook-ceph/values.yaml
 ```
 
 Tjek pods:
@@ -58,60 +81,70 @@ Tjek pods:
 kubectl -n rook-ceph get pods
 ```
 
-Der skal komme pods som:
+---
 
-- rook-ceph-operator  
-- rook-discover  
+# 5. Generér clusterens values.yaml
+
+Navigér til cluster chart-mappen:
+
+```bash
+cd Talos/Bash/charts/rook-ceph-cluster
+```
+
+Generér standardværdier:
+
+```bash
+helm show values rook-release/rook-ceph-cluster --version v1.18.8 > values.yaml
+```
 
 ---
 
-# 3. Installér Ceph Cluster (single-node manifest)
+# 6. Generér manifest.yaml via template.sh
 
-Cluster-definitionen findes i:
+``template.sh`` indholder:
+```bash
+helm repo add rook-release https://charts.rook.io/release
+
+helm template rook-ceph-cluster rook-release/rook-ceph-cluster \
+  --namespace rook-ceph \
+  --version v1.18.8 \
+  -f values.yaml >> manifest.yaml
+```
+
+```bash
+bash template.sh
+```
+
+Dette genererer:
 
 ```
-Talos/Bash/charts/rook-ceph-cluster/manifest.yaml
+manifest.yaml
 ```
 
-Denne manifest er allerede forberedt til **single-node drift**.
+---
 
-Installér:
+# 7. Installér Ceph clusteret
 
 ```bash
 kubectl apply -f ./charts/rook-ceph-cluster/manifest.yaml
 ```
 
-Dette opretter:
-
-- CephCluster
-- CephBlockPool
-- StorageClass
-- Manager + Mon + OSD
-
-Vent et par minutter og tjek status:
+Tjek clusterets tilstand:
 
 ```bash
-kubectl -n rook-ceph get pods
 kubectl -n rook-ceph get cephcluster
+kubectl -n rook-ceph get pods
 ```
 
 ---
 
-# 4. StorageClass
-
-Cluster-manifestet opretter typisk en StorageClass:
+# 8. StorageClass
 
 ```bash
 kubectl get storageclass
 ```
 
-Du bør se:
-
-```
-rook-ceph-block (default)
-```
-
-Hvis ikke, sæt den som default:
+Hvis `rook-ceph-block` ikke er default:
 
 ```bash
 kubectl patch storageclass rook-ceph-block   -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
@@ -119,17 +152,21 @@ kubectl patch storageclass rook-ceph-block   -p '{"metadata": {"annotations":{"s
 
 ---
 
-# 5. Sikkerhedsmæssige undtagelser (rook-ceph-security-exemption.yaml)
+# 9. Giv Talos de nødvendige undtagelser
 
-I projektet findes filen:
-
+```yaml
+# rook-ceph-security-exemption.yaml
+cluster:
+  apiServer:
+    admissionControl:
+    - name: PodSecurity # Name is the name of the admission controller.
+      # Configuration is an embedded configuration object to be used as the plugin's
+      configuration:
+        apiVersion: pod-security.admission.config.k8s.io/v1alpha1
+        exemptions:
+          namespaces:
+          - rook-ceph
 ```
-Talos/Bash/rook-ceph-security-exemption.yaml
-```
-
-Den bruges til at tillade nødvendige privilegier i Talos-miljøet.
-
-Anvend den:
 
 ```bash
 kubectl apply -f ./Bash/rook-ceph-security-exemption.yaml
@@ -137,56 +174,42 @@ kubectl apply -f ./Bash/rook-ceph-security-exemption.yaml
 
 ---
 
-# 6. Opgraderinger (upgrade.sh)
+# 10. Opgradering af Rook (upgrade.sh)
 
-Projektet indeholder et opgraderingsscript:
-
-```
-Talos/Bash/charts/rook-ceph/upgrade.sh
-```
-
-Opgradering foretages med:
+``rook-ceph/upgrade.sh`` indholder:
 
 ```bash
-./charts/rook-ceph/upgrade.sh
+helm repo add rook-release https://charts.rook.io/release
+
+helm upgrade rook-ceph rook-release/rook-ceph \
+  --install \
+  --create-namespace \
+  --namespace rook-ceph \
+  --version v1.18.8 \
+  -f values.yaml
+```
+
+``rook-ceph-cluster/upgrade.sh`` indholder:
+
+```bash
+helm repo add rook-release https://charts.rook.io/release
+
+helm upgrade rook-ceph-cluster rook-release/rook-ceph-cluster \
+  --install \
+  --create-namespace \
+  --namespace rook-ceph \
+  --version v1.18.8 \
+  -f values.yaml
+```
+
+```bash
+bash ./charts/rook-ceph/upgrade.sh
+bash ./charts/rook-ceph-cluster/upgrade.sh
 ```
 
 ---
 
-# 7. Verificér Ceph cluster
-
-### Tjek CephCluster status:
-
-```bash
-kubectl -n rook-ceph get cephcluster
-```
-
-Forventet:
-
-```
-HEALTH_OK
-```
-
-### Tjek pods:
-
-```bash
-kubectl -n rook-ceph get pods
-```
-
-Der skal være:
-
-- rook-ceph-mgr
-- rook-ceph-mon
-- rook-ceph-osd
-- rook-ceph-crashcollector
-- rook-ceph-mds (valgfrit)
-- rook-ceph-tools (hvis installeret)
-
----
-
-# 8. Test et PVC claim
-
-Lav en test PersistentVolumeClaim:
+# 11. Test PVC-provisionering
 
 ```yaml
 apiVersion: v1
@@ -202,8 +225,6 @@ spec:
   storageClassName: rook-ceph-block
 ```
 
-Gem som `pvc-test.yaml` og kør:
-
 ```bash
 kubectl apply -f pvc-test.yaml
 kubectl get pvc
@@ -211,14 +232,12 @@ kubectl get pvc
 
 ---
 
-# 9. Kendte begrænsninger for single-node Ceph
+# 12. Kendte begrænsninger for single-node Ceph
 
-- **Ingen replikering**  
-  Alle Ceph-pools vil køre med `size: 1`
+| Begrænsning | Forklaring |
+|------------|------------|
+| Ingen replikering | Pools kører med `size: 1` |
+| Ingen HA | Mon/Mgr kører kun på én node |
+| Diskfejl = datatab | Ingen redundans |
+| Ikke til produktion | Kun test/PoC |
 
-- **Ingen høj tilgængelighed**
-
-- **Diskfejl = tab af data**  
-  Der er ingen redundans.
-
-> Anvend kun Ceph i single-node miljøet til test, udvikling og OS2AI PoC'er.

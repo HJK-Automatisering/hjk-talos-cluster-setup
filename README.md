@@ -13,17 +13,17 @@ Formålet er at sikre en ensartet, reproducérbar og veldokumenteret procedure f
 
 ---
 
-# 📘 Dokumentation
+# Dokumentation
 
 Den fulde dokumentation ligger i mappen **docs/** og publiceres via GitHub Pages.
 
 Du kan læse dokumentationen her:
 
-👉 https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
+https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 
 ---
 
-# 📁 Dokumentationsstruktur
+# Dokumentationsstruktur
 
 | Fil | Indhold |
 |-----|---------|

@@ -29,7 +29,15 @@ Dette afsnit beskriver den komplette installationsproces for Talos Linux på en 
 Projectet indeholder et script, der samler alle patches og basefiler:
 
 ```bash
-./Bash/build.sh
+talosctl gen config --output-types controlplane \
+ --with-secrets secrets.yaml \
+ --config-patch @nameservers.yaml \
+ --config-patch @network.yaml \
+ --config-patch @cilium.yaml \
+ --config-patch @allow-scheduling-on-control-planes.yaml \
+ --config-patch @rook-ceph-security-exemption.yaml \
+ cluster2 https://192.168.50.10:6443 --force
+
 ```
 
 Dette script genererer:
@@ -85,19 +93,19 @@ cluster:
 Når Talos kører på sin midlertidige DHCP-adresse:
 
 ```bash
-./Bash/apply.sh
+talosctl --talosconfig talosconfig \
+ --endpoints 192.168.50.10 \
+ --nodes 192.168.50.10 \
+ apply-config -f controlplane.yaml
 ```
 
 Eller insecure version (nødvendig første gang):
 
 ```bash
-./Bash/apply-insecure.sh
-```
-
-Disse scripts udfører:
-
-```
-talosctl apply-config   --insecure   --nodes <DHCP-IP>   --file controlplane.yaml
+talosctl --talosconfig talosconfig \
+ --endpoints 192.168.50.10\
+ --nodes 192.168.50.10\
+ apply-config -f controlplane.yaml --insecure
 ```
 
 Serveren genstarter herefter med den nye statiske IP.
@@ -107,7 +115,11 @@ Serveren genstarter herefter med den nye statiske IP.
 # 6. (Valgfrit) Test konfiguration (dry run)
 
 ```bash
-./Bash/apply-dry-run.sh
+talosctl --talosconfig talosconfig \
+ --endpoints 192.168.50.10 \
+ --nodes 192.168.50.10 \
+ apply-config -f controlplane.yaml --dry-run
+
 ```
 
 ---
@@ -117,13 +129,11 @@ Serveren genstarter herefter med den nye statiske IP.
 Når serveren kører Talos med statisk IP:
 
 ```bash
-./Bash/bootstrap.sh
-```
+talosctl --talosconfig talosconfig \
+ --endpoints 192.168.50.10 \
+ --nodes 192.168.50.10 \
+ bootstrap
 
-Scriptet udfører typisk:
-
-```bash
-talosctl bootstrap --nodes 192.168.50.10
 ```
 
 Når bootstrappen er færdig:
@@ -139,7 +149,11 @@ Når bootstrappen er færdig:
 For at kunne administrere Kubernetes:
 
 ```bash
-./Bash/kubeconfig.sh
+talosctl --talosconfig talosconfig \
+ --endpoints 192.168.50.10 \
+ --nodes 192.168.50.10 \
+ kubeconfig
+
 ```
 
 Eller manuelt:

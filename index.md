@@ -25,27 +25,27 @@ Nedenfor følger en oversigt over dokumentets hovedsektioner.
 
 ## 1. Miljøforberedelse  
 Hardware, netværk, statisk IP, WSL2-installation og værktøjer:  
-➡ *docs/01-environment.md*
+*docs/01-environment.md*
 
 ## 2. Installation og bootstrap af Talos  
 ISO-boot, clusterconfig, patches, apply-scripts og bootstrap af control-plane:  
-➡ *docs/02-bootstrap.md*
+*docs/02-bootstrap.md*
 
 ## 3. Installation af Cilium  
 Installation via Helm, brug af projektets values.yaml og netværksvalidering:  
-➡ *docs/03-cilium.md*
+*docs/03-cilium.md*
 
 ## 4. Installation af Rook Ceph  
 Single-node Ceph-deployment, storageclass og kendte begrænsninger:  
-➡ *docs/04-rook-ceph.md*
+*docs/04-rook-ceph.md*
 
 ## 5. Adgang til cluster fra WSL2  
 kubeconfig, talosctl og netværksadgang fra udviklermaskiner:  
-➡ *docs/05-wsl-access.md*
+*docs/05-wsl-access.md*
 
 ## 6. Fejlfinding og FAQ  
 Talos, Kubernetes, Cilium, Ceph, WSL2 og konfigurationsrelaterede problemer:  
-➡ *docs/90-troubleshooting.md*
+*docs/90-troubleshooting.md*
 
 ---
 
