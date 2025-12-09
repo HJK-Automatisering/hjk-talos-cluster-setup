@@ -239,5 +239,4 @@ kubectl get pvc
 | Ingen replikering | Pools kører med `size: 1` |
 | Ingen HA | Mon/Mgr kører kun på én node |
 | Diskfejl = datatab | Ingen redundans |
-| Ikke til produktion | Kun test/PoC |
 
