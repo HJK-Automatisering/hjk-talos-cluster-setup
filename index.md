@@ -12,7 +12,6 @@ Velkommen til dokumentationen for opsætning og drift af en **single-node Kubern
 - **Cilium** (CNI)  
 - **Rook Ceph** (single-node storage til test og udvikling)  
 - **OS2AI**  
-- **Memoctopus MVP**  
 - Adgang via **Ubuntu WSL2** på udviklermaskiner  
 
 Formålet med denne dokumentation er at skabe en ensartet, reproducerbar og gennemsigtig proces for installation, drift og fejlfinding af klyngen, både for nuværende og fremtidige medarbejdere.
