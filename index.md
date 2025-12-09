@@ -83,12 +83,3 @@ Brugeren bør have kendskab til:
 
 Alle Talos-relaterede begreber forklares undervejs.
 
----
-
-# Kom i gang
-
-Start med:
-
-➡ **01 – Miljøforberedelse**  
-for at sikre, at arbejdsstation, netværk og server er klar til installationen.
-
