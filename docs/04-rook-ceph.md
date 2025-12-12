@@ -1,33 +1,34 @@
 ---
 layout: default
-title: Installation af Rook Ceph (single-node)
+title: Rook Ceph Installation (single-node)
 nav_order: 5
 ---
 
-# Installation af Rook Ceph (single-node)
+# Rook Ceph Installation (single-node)
 
-Rook Ceph bruges som storage-backend til Kubernetes.  
-I en **single-node** konfiguration fungerer Ceph **kun som test-/udviklingsmiljø**, da der ikke er redundans eller høj tilgængelighed.
-
-Denne dokumentation beskriver en **ren, professionel og reproducerbar installation**, baseret på jeres projektstruktur:
+Rook Ceph is used as the **storage backend for Kubernetes**.
+In a **single-node setup** there is **no redundancy or high availability**.
 
 ```
-Talos/Bash/charts/rook-ceph/
-Talos/Bash/charts/rook-ceph-cluster/
+k8s/charts/rook-ceph/
+k8s/charts/rook-ceph-cluster/
+scripts/k8s/
+k8s/patches/
 ```
 
 ---
 
-# 1. Forudsætninger
+## 1. Prerequisites
 
-Før installationen:
+Before proceeding:
 
-- Talos-klyngen er installeret og bootstrap’et
-- Cilium kører stabilt
-- Node har én eller flere rå diske til Ceph OSD’er (ikke formaterede)
-- `kubectl`, `helm` og `talosctl` fungerer i WSL2
+- Talos cluster is installed and bootstrapped
+- Cilium is installed and healthy
+- The node has one or more **raw block devices** available for Ceph OSDs
+- `kubectl`, `helm`, and `talosctl` are available (typically from WSL2)
+- Kubernetes API is reachable
 
-Verificér:
+Verify:
 
 ```bash
 kubectl get nodes
@@ -36,14 +37,16 @@ kubectl -n kube-system get pods
 
 ---
 
-# 2. Opsætning af Helm repository
+## 2. Helm repository setup
+
+Add the Rook Helm repository (one-time operation):
 
 ```bash
 helm repo add rook-release https://charts.rook.io/release
 helm repo update
 ```
 
-Tjek tilgængelige charts:
+Verify available charts:
 
 ```bash
 helm search repo rook
@@ -51,31 +54,41 @@ helm search repo rook
 
 ---
 
-# 3. Generér operatorens values.yaml
+## 3. Generate Rook Ceph operator values.yaml
 
-Navigér til operatorens chart-mappe:
+Navigate to the operator chart directory:
 
 ```bash
-cd Talos/Bash/charts/rook-ceph
+cd k8s/charts/rook-ceph
 ```
 
-Generér Helm-chart værdier:
+Generate default values for the pinned version:
 
 ```bash
 helm show values rook-release/rook-ceph --version v1.18.8 > values.yaml
 ```
 
-> Fastlås gerne versionen i projektet og commit filen.
+> Pinning the version and committing `values.yaml` ensures reproducibility.
+
+Adjust `values.yaml` if needed (resource limits, monitoring, etc.).
 
 ---
 
-# 4. Installér Rook Ceph operator
+## 4. Install Rook Ceph operator
+
+Install or upgrade the operator using the provided script:
 
 ```bash
-helm upgrade --install rook-ceph ./charts/rook-ceph --namespace rook-ceph --create-namespace --values ./charts/rook-ceph/values.yaml
+bash scripts/k8s/rook-ceph-upgrade.sh
 ```
 
-Tjek pods:
+This executes:
+
+```bash
+helm upgrade rook-ceph rook-release/rook-ceph   --install   --create-namespace   --namespace rook-ceph   --version v1.18.8   -f values.yaml
+```
+
+Verify:
 
 ```bash
 kubectl -n rook-ceph get pods
@@ -83,133 +96,129 @@ kubectl -n rook-ceph get pods
 
 ---
 
-# 5. Generér clusterens values.yaml
+## 5. Generate Ceph cluster values.yaml
 
-Navigér til cluster chart-mappen:
+Navigate to the cluster chart directory:
 
 ```bash
-cd Talos/Bash/charts/rook-ceph-cluster
+cd k8s/charts/rook-ceph-cluster
 ```
 
-Generér standardværdier:
+Generate default values:
 
 ```bash
 helm show values rook-release/rook-ceph-cluster --version v1.18.8 > values.yaml
 ```
 
----
+Edit `values.yaml` to ensure:
 
-# 6. Generér manifest.yaml via template.sh
-
-``template.sh`` indholder:
-```bash
-helm repo add rook-release https://charts.rook.io/release
-
-helm template rook-ceph-cluster rook-release/rook-ceph-cluster \
-  --namespace rook-ceph \
-  --version v1.18.8 \
-  -f values.yaml >> manifest.yaml
-```
-
-```bash
-bash template.sh
-```
-
-Dette genererer:
-
-```
-manifest.yaml
-```
+- Single-node configuration
+- `replicated.size: 1`
+- Correct device selection
 
 ---
 
-# 7. Installér Ceph clusteret
+## 6. Render CephCluster manifest
+
+The cluster chart is rendered to a static manifest for transparency and control.
+
+Render using the script:
 
 ```bash
-kubectl apply -f ./charts/rook-ceph-cluster/manifest.yaml
+bash scripts/k8s/render-rook-ceph-cluster-template.sh
 ```
 
-Tjek clusterets tilstand:
+The script runs:
+
+```bash
+helm template rook-ceph-cluster rook-release/rook-ceph-cluster   --namespace rook-ceph   --version v1.18.8   -f values.yaml > manifest.yaml
+```
+
+Result:
+
+```
+k8s/charts/rook-ceph-cluster/manifest.yaml
+```
+
+---
+
+## 7. Apply Ceph cluster manifest
+
+Apply the rendered manifest:
+
+```bash
+kubectl apply -f k8s/charts/rook-ceph-cluster/manifest.yaml
+```
+
+Verify:
 
 ```bash
 kubectl -n rook-ceph get cephcluster
 kubectl -n rook-ceph get pods
 ```
 
+The CephCluster should eventually reach `HEALTH_OK`.
+
 ---
 
-# 8. StorageClass
+## 8. StorageClass
+
+Verify StorageClasses:
 
 ```bash
 kubectl get storageclass
 ```
 
-Hvis `rook-ceph-block` ikke er default:
+Expected:
+
+```
+rook-ceph-block
+```
+
+If not default:
 
 ```bash
-kubectl patch storageclass rook-ceph-block   -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass rook-ceph-block   -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ```
 
 ---
 
-# 9. Giv Talos de nødvendige undtagelser
+## 9. Talos PodSecurity exemption
 
-```yaml
-# rook-ceph-security-exemption.yaml
-cluster:
-  apiServer:
-    admissionControl:
-    - name: PodSecurity # Name is the name of the admission controller.
-      # Configuration is an embedded configuration object to be used as the plugin's
-      configuration:
-        apiVersion: pod-security.admission.config.k8s.io/v1alpha1
-        exemptions:
-          namespaces:
-          - rook-ceph
-```
+Rook Ceph requires elevated privileges.
+Talos enforces Pod Security by default.
+
+Apply the exemption:
 
 ```bash
-kubectl apply -f ./Bash/rook-ceph-security-exemption.yaml
+kubectl apply -f k8s/patches/rook-ceph-security-exemption.yaml
 ```
+
+This allows required pods to run in the `rook-ceph` namespace.
 
 ---
 
-# 10. Opgradering af Rook (upgrade.sh)
+## 10. Upgrades
 
-``rook-ceph/upgrade.sh`` indholder:
-
-```bash
-helm repo add rook-release https://charts.rook.io/release
-
-helm upgrade rook-ceph rook-release/rook-ceph \
-  --install \
-  --create-namespace \
-  --namespace rook-ceph \
-  --version v1.18.8 \
-  -f values.yaml
-```
-
-``rook-ceph-cluster/upgrade.sh`` indholder:
+Upgrade operator:
 
 ```bash
-helm repo add rook-release https://charts.rook.io/release
-
-helm upgrade rook-ceph-cluster rook-release/rook-ceph-cluster \
-  --install \
-  --create-namespace \
-  --namespace rook-ceph \
-  --version v1.18.8 \
-  -f values.yaml
+bash scripts/k8s/rook-ceph-upgrade.sh
 ```
+
+Upgrade Ceph cluster:
 
 ```bash
-bash ./charts/rook-ceph/upgrade.sh
-bash ./charts/rook-ceph-cluster/upgrade.sh
+bash scripts/k8s/rook-ceph-cluster-upgrade.sh
 ```
+
+Always upgrade **operator first**, then **cluster**.
 
 ---
 
-# 11. Test PVC-provisionering
+## 11. Test PVC provisioning
+
+Create a test PVC:
 
 ```yaml
 apiVersion: v1
@@ -225,18 +234,36 @@ spec:
   storageClassName: rook-ceph-block
 ```
 
+Apply:
+
 ```bash
 kubectl apply -f pvc-test.yaml
 kubectl get pvc
 ```
 
+The PVC should reach `Bound`.
+
 ---
 
-# 12. Kendte begrænsninger for single-node Ceph
+## 12. Known limitations (single-node)
 
-| Begrænsning | Forklaring |
-|------------|------------|
-| Ingen replikering | Pools kører med `size: 1` |
-| Ingen HA | Mon/Mgr kører kun på én node |
-| Diskfejl = datatab | Ingen redundans |
+| Limitation | Explanation |
+|-----------|-------------|
+| No replication | Pool size is `1` |
+| No HA | Mon/Mgr/OSD all run on one node |
+| Disk failure = data loss | No redundancy |
 
+---
+
+## Summary
+
+Rook Ceph provides **functional persistent storage** for development and PoC workloads
+on a single-node Talos cluster.
+
+For production usage:
+- Multiple nodes
+- Multiple disks
+- Replication ≥ 3
+- Separate failure domains
+
+are mandatory.

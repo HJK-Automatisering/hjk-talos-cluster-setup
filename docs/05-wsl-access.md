@@ -1,25 +1,25 @@
 ---
 layout: default
-title: Adgang til klyngen fra WSL2
+title: Accessing the Cluster from WSL2
 nav_order: 8
 ---
 
-# Adgang til klyngen fra WSL2
+# Accessing the Cluster from WSL2
 
-Denne guide beskriver, hvordan man får fuld adgang til Talos og Kubernetes-klyngen fra en **Windows 11 maskine via Ubuntu WSL2**.
+This guide explains how to access and operate the Talos and Kubernetes cluster from a **Windows 11 workstation using Ubuntu WSL2**.
 
-WSL2 bruges til:
-- `talosctl` styring af serveren  
-- `kubectl` administration af Kubernetes  
-- Helm-deployment af Cilium og Rook Ceph 
+WSL2 is used for:
+- Managing the server using `talosctl`
+- Administering Kubernetes using `kubectl`
+- Deploying platform components using Helm (Cilium, Rook Ceph)
 
-Forbindelsen sker direkte til serverens statiske IP-adresse (fx `192.168.50.10`).
+Connectivity is established directly to the server’s **static IP address** (for example `192.168.50.10`).
 
 ---
 
-# 1. Forudsætninger
+## 1. Prerequisites
 
-Inden du fortsætter, skal følgende være installeret i WSL2:
+Before continuing, ensure the following tools are installed inside WSL2:
 
 ```bash
 talosctl version
@@ -28,12 +28,11 @@ helm version
 cilium version
 ```
 
-Også vigtigt:
+Additionally:
+- You must be able to **ping the server IP**
+- Firewalls must allow traffic from the WSL2 environment
 
-- Du skal kunne **ping'e serverens IP**  
-- Firewalls skal tillade trafik fra din WSL2-adresse  
-
-Test:
+Test connectivity:
 
 ```bash
 ping 192.168.50.10
@@ -41,143 +40,151 @@ ping 192.168.50.10
 
 ---
 
-# 2. Talosctl konfiguration
+## 2. Configuring talosctl
 
-Når Talos er installeret på serveren, skal WSL2 sættes op til at kommunikere med noden.
+Once Talos is installed on the server, WSL2 must be configured to communicate with the node.
 
-## 2.1 Sæt Talos endpoint
+### 2.1 Set Talos endpoint
 
 ```bash
 talosctl config endpoint 192.168.50.10
 ```
 
-## 2.2 Sæt node
+### 2.2 Set Talos node
 
 ```bash
 talosctl config node 192.168.50.10
 ```
 
-## 2.3 Test forbindelsen
+### 2.3 Verify connectivity
 
 ```bash
 talosctl version
 talosctl health
 ```
 
-Hvis dette fejler:
-
-- tjek routing  
-- tjek firewall  
-- tjek at serveren kører Talos (ikke ISO i maintenance mode)
+If this fails:
+- Verify network routing
+- Check firewall rules
+- Ensure the server is running Talos (not still booted from the ISO in maintenance mode)
 
 ---
 
-# 3. Hent kubeconfig (Talos → WSL2)
+## 3. Retrieve kubeconfig (Talos → WSL2)
 
-Efter bootstrap:
+After the Kubernetes bootstrap has completed:
 
 ```bash
 talosctl kubeconfig --nodes 192.168.50.10 --force
 ```
 
-Dette genererer:
+This writes the kubeconfig file to:
 
-```
+```text
 ~/.kube/config
 ```
 
-Verificér:
+Verify access:
 
 ```bash
 kubectl get nodes
 kubectl get pods -A
 ```
 
-Hvis der returneres data → Kubernetes-adgang virker.
+If resources are returned, Kubernetes access is working correctly.
 
 ---
 
-# 4. WSL2 netværksbemærkninger
+## 4. WSL2 Networking Notes
 
-WSL2 fungerer som en **virtuel maskine**, og dens IP ændrer sig ved hvert reboot.
+WSL2 runs as a **lightweight virtual machine**, and its IP address changes on every restart.
 
-Tjek din WSL2 IP:
+Check the WSL2 IP address:
 
 ```bash
 ip addr show eth0
 ```
 
-Eksempel:
+Example output:
 
-```
+```text
 inet 172.25.89.14/20
 ```
 
-### Hvis WSL2 ikke kan nå 192.168.50.10:
+### If WSL2 cannot reach the cluster IP
 
-1. Sørg for at Windows-maskinen fysisk kan nå serverens subnet  
-2. Tjek at router/firewall tillader WSL2-trafik  
-3. WSL2 NAT kan kræve statiske ruter i ekstremt låste netværk
+1. Ensure the Windows host itself can reach the server subnet
+2. Verify that network firewalls allow traffic from WSL2
+3. In very restricted networks, static routes may be required
+
+In most enterprise networks, no additional configuration is needed beyond basic firewall access.
 
 ---
 
-# 5. Import af kubeconfig til Windows Kubernetes tooling (valgfrit)
+## 5. Optional: Use kubeconfig from Windows tools
 
-Hvis du også ønsker Windows-side tools:
+If you also want to use Kubernetes tools directly on Windows:
 
 ```powershell
 mkdir ~/.kube
 wsl cp ~/.kube/config ~/.kube/config
 ```
 
+This copies the kubeconfig from WSL2 into the Windows user profile.
+
 ---
 
-# 6. Brug af Helm fra WSL2
+## 6. Using Helm from WSL2
 
-Når kubectl virker, virker Helm automatisk:
+Once `kubectl` access is working, Helm will work automatically:
 
 ```bash
 helm ls -A
 ```
 
-Dette bruges til:
-
-- Installation af Cilium  
-- Installation af Rook Ceph  
+Helm is used to deploy and manage:
+- Cilium (CNI)
+- Rook Ceph (storage)
 
 ---
 
-# 7. Fejlfinding
+## 7. Troubleshooting
 
-### WSL2 → Talos fejler
+### WSL2 → Talos connectivity issues
+
 ```bash
 talosctl version
 ```
-Fejl: *connection refused*  
-→ Server kører ikke Talos (måske ISO boot).  
-→ Firewall blokkerer trafik.
 
-### kubeconfig virker ikke
+Error: `connection refused`  
+→ Talos may not be running (still booted from ISO)  
+→ Firewall rules may be blocking access
+
+### kubeconfig does not work
+
 ```bash
 kubectl get nodes
 ```
-Fejl: *context deadline exceeded*  
-→ kube-apiserver svarer ikke.  
-→ Cilium kan være ned (tjek `kubectl -n kube-system get pods`).
+
+Error: `context deadline exceeded`  
+→ Kubernetes API server is not responding  
+→ Cilium may not be running (check `kubectl -n kube-system get pods`)
 
 ### Talos health check
+
 ```bash
 talosctl health
 ```
-Returnerer detaljer om node-status.
+
+Returns detailed node health information.
 
 ---
 
-# 8. Klar til næste trin
+## 8. Next Steps
 
-Når WSL2-adgang virker, kan du fortsætte med drift og deployment:
+Once WSL2 access is confirmed, you can proceed with platform operations:
 
-- Installér Cilium  
-- Installér Rook Ceph  
+- Install Cilium
+- Install Rook Ceph
 
-Se næste dokumentation for arbejdsprocessen.
+Continue with the next documentation section for platform deployment.

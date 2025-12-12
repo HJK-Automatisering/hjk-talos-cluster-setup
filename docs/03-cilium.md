@@ -1,46 +1,60 @@
 ---
 layout: default
-title: Installation af Cilium
+title: Cilium Installation
 nav_order: 4
 ---
 
-# Installation af Cilium
+# Cilium Installation
 
-Cilium fungerer som CNI (Container Network Interface) i klyngen og erstatter den indbyggede Talos CNI.  
-Dette kapitel beskriver installationen af **Cilium** ved hjælp af de Helm-kommandoer og scripts, der findes i projektmappen `Talos/Bash/charts/cilium`.
+Cilium acts as the **Container Network Interface (CNI)** for the Kubernetes cluster and replaces the built‑in Talos CNI.
+This section describes how **Cilium** is installed and managed using Helm and the scripts provided in the
+`hjk-talos-cluster` infrastructure repository.
 
-Installationen består af tre hovedtrin:
-
-1. Opret og tilpas `values.yaml` til Cilium  
-2. Installér Cilium via Helm (eller via `upgrade.sh`)  
-3. Valider netværk og konnektivitet  
-
-> **Bemærk:** Talos’ indbyggede CNI og kube-proxy er slået fra via Talos-patchen `Talos/Bash/cilium.yaml`, som anvendes tidligere i Talos-konfigurationen. Det er en forudsætning for, at Cilium kan overtage netværket.
+> **Important**  
+> Talos’ built‑in CNI and kube‑proxy are disabled earlier via the Talos patch `talos/patches/cilium.yaml`.
+> This is a strict prerequisite for running Cilium.
 
 ---
 
-# 1. Opret Cilium Helm values (values.yaml)
+## Overview
 
-Hvis filen ikke allerede findes i projektet, kan den genereres fra Ciliums egen chart-definition.
+The installation consists of three main steps:
 
-Gå til Cilium chart-mappen i dit projekt:
+1. Generate and maintain a `values.yaml` for Cilium  
+2. Install or upgrade Cilium using Helm (via script or Taskfile)  
+3. Validate networking and connectivity  
 
-```bash
-cd Talos/Bash/charts/cilium
+---
+
+## 1. Generate Cilium Helm values (`values.yaml`)
+
+Cilium configuration is managed using Helm values stored in:
+
+```
+k8s/charts/cilium/values.yaml
 ```
 
-Hent standardværdierne fra den ønskede Cilium-version og gem dem som `values.yaml`:
+If the file does not already exist, it can be generated directly from the upstream Cilium Helm chart.
+
+From the infrastructure repository root:
+
+```bash
+cd k8s/charts/cilium
+```
+
+Generate default values for the desired Cilium version:
 
 ```bash
 helm show values cilium/cilium --version 1.18.4 > values.yaml
 ```
 
-> **Bemærk:** Versionen (`1.18.4`) er et eksempel. Brug den version, I ønsker at standardisere på.  
-> Det anbefales at fastlåse en version og committe `values.yaml` til repository’et, så installationen bliver reproducerbar.
+> **Note**  
+> Version `1.18.4` is an example.  
+> Always pin a specific version and commit `values.yaml` to Git to ensure reproducible deployments.
 
-Herefter kan `values.yaml` tilpasses efter jeres miljø (netværk, Hubble, IPAM osv.).
+After generation, adjust `values.yaml` according to your environment.
 
-Eksempeludsnit (for illustration):
+### Example snippet
 
 ```yaml
 hubble:
@@ -51,105 +65,112 @@ k8sServiceHost: 127.0.0.1
 k8sServicePort: 7445
 ```
 
-Når filen er oprettet og tilpasset, vil den blive brugt i de næste trin.
-
 ---
 
-# 2. Installation af Cilium via Helm
+## 2. Install or upgrade Cilium
 
-## 2.1 Tilføj Cilium repo
+### 2.1 Add the Cilium Helm repository
 
-Dette udføres typisk én gang pr. miljø:
+This only needs to be done once per environment:
 
 ```bash
 helm repo add cilium https://helm.cilium.io/
 helm repo update
 ```
 
-## 2.2 Installér Cilium med jeres `values.yaml`
+---
 
-Fra mappen `Talos/Bash/charts/cilium`:
+### 2.2 Install / upgrade using script
 
-```bash
-cd Talos/Bash/charts/cilium
+Cilium is installed using a dedicated script located at:
 
-helm upgrade cilium cilium/cilium --install   --version 1.18.4 --namespace kube-system -f values.yaml
+```
+scripts/k8s/cilium-upgrade.sh
 ```
 
-> Vi bruger `upgrade --install`, så kommandoen både kan installere og opdatere samme release.
-
-Projektet indeholder også et script til opgradering og gentagen installation:
+Run:
 
 ```bash
-bash upgrade.sh
+bash scripts/k8s/cilium-upgrade.sh
 ```
 
-Indholdet af `upgrade.sh` er:
+The script internally runs:
 
 ```bash
-helm upgrade cilium cilium/cilium --install --version 1.18.4 --namespace kube-system -f values.yaml
+helm upgrade cilium cilium/cilium   --install   --version 1.18.4   --namespace kube-system   -f k8s/charts/cilium/values.yaml
 ```
 
-Du kan derfor nøjes med at vedligeholde version og konfiguration i `values.yaml` og evt. i scriptet, og blot køre:
+This approach ensures:
 
-```bash
-bash upgrade.sh
-```
-
-ved fremtidige opgraderinger.
+- Idempotent installs and upgrades
+- Version pinning
+- Centralised configuration
 
 ---
 
-# 3. Validering af installation
+## 3. Validate the installation
 
-## 3.1 Tjek Cilium pods
+### 3.1 Verify Cilium pods
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=cilium
 kubectl -n kube-system get pods -l k8s-app=cilium-operator
 ```
 
-Alle Cilium-relaterede pods skal blive **Ready**.
+All pods should be in **Running** state.
 
-## 3.2 Tjek Cilium status
+---
+
+### 3.2 Check Cilium status
 
 ```bash
 cilium status
 ```
 
-Du bør se at:
+Expected results:
 
-- CNI er initialiseret korrekt  
-- Datapath er **Healthy**  
-- Eventuelle Hubble-komponenter er oppe, hvis de er aktiveret  
+- CNI initialized successfully
+- Datapath: **Healthy**
+- Hubble components running (if enabled)
 
-## 3.3 Test netværkskonnektivitet
+---
+
+### 3.3 Run connectivity tests
 
 ```bash
 cilium connectivity test
 ```
 
-Dette tester bl.a.:
+This validates:
 
-- DNS-opslag  
-- Pod-til-pod trafik  
-- Pod-til-service trafik  
-- Node routing  
+- DNS resolution
+- Pod‑to‑pod communication
+- Pod‑to‑service traffic
+- Node routing
 
 ---
 
-# 4. Aktivering af Hubble UI (valgfrit)
+## 4. Hubble UI (optional)
 
-Hvis Hubble UI er aktiveret i `values.yaml`, kan den eksponeres lokalt:
+If Hubble UI is enabled in `values.yaml`, it can be exposed locally:
 
 ```bash
 kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```
 
-Åbn derefter en browser på din egen maskine:
+Open a browser:
 
 ```
 http://localhost:12000
 ```
 
-Her kan du se live netværkstrafik, flows og fejlsøgning.
+Hubble UI provides live visibility into network flows and is useful for troubleshooting.
+
+---
+
+## Notes & best practices
+
+- Always install Cilium **before** any workload is deployed
+- Never mix Talos CNI and Cilium
+- Keep `values.yaml` under version control
+- Validate networking before proceeding to storage (Rook‑Ceph) or GitOps tools

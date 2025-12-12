@@ -1,85 +1,118 @@
 ---
 layout: default
-title: Installation af Talos og bootstrap af cluster
+title: Talos Installation and Cluster Bootstrap
 nav_order: 3
 ---
 
-# Installation af Talos og bootstrap af cluster
+# Talos Installation and Cluster Bootstrap
 
-Dette afsnit beskriver den komplette installationsproces for Talos Linux på en single-node Kubernetes-klynge. Processen baserer sig på de Bash-scripts og YAML-konfigurationer, der findes i projektmappen **Talos/Bash/**.
+This section describes the complete installation and bootstrap process for **Talos Linux** on a **single-node Kubernetes cluster**.
 
----
+The process is based on:
+- Bash scripts
+- Talos configuration patches
+- Taskfile-based automation
 
-# 1. Boot fra Talos ISO
+All infrastructure code lives in the separate repository
 
-1. Montér Talos ISO via iDRAC:
-   - Download fra: https://github.com/siderolabs/talos/releases
-   - Brug `metal-amd64.iso`
-
-2. Boot serveren i *maintenance mode*.
-
-3. Notér den midlertidige DHCP-adresse, som Talos får ved første boot.
-
-> Eksempel: `192.168.50.58` (bruges kun første gang)
+This documentation focuses on **what happens and in which order**, not the exact implementation details.
 
 ---
 
-# 2. Generér clusterkonfiguration via build.sh
+## Overview of the bootstrap process
 
-Projectet indeholder et script, der samler alle patches og basefiler:
+High-level steps:
+
+1. Boot the server from Talos ISO  
+2. Generate Talos configuration (control plane)  
+3. Apply configuration to the node  
+4. Bootstrap Kubernetes  
+5. Retrieve kubeconfig and verify access  
+
+---
+
+## 1. Boot from Talos ISO
+
+1. Mount the Talos ISO via iDRAC (or equivalent out-of-band management)
+   - Download from: https://github.com/siderolabs/talos/releases
+   - Use the image: `metal-amd64.iso`
+
+2. Boot the server.
+
+3. During the first boot, Talos will obtain a **temporary DHCP address**.
+
+> This DHCP address is only used for initial installation and troubleshooting.
+
+You can discover the node using:
 
 ```bash
-talosctl gen config --output-types controlplane \
- --with-secrets secrets.yaml \
- --config-patch @nameservers.yaml \
- --config-patch @network.yaml \
- --config-patch @cilium.yaml \
- --config-patch @allow-scheduling-on-control-planes.yaml \
- --config-patch @rook-ceph-security-exemption.yaml \
- cluster2 https://192.168.50.10:6443 --force
-
+talosctl discover
 ```
-
-Dette script genererer:
-
-- `controlplane.yaml`
-- `network.yaml`
-- `nameservers.yaml`
-- Andre nødvendige filer til installation
-
-Patches håndterer bl.a.:
-
-- Statisk IP-konfiguration
-- Node-roller
-- DNS
-- Tillad scheduling på control-plane
 
 ---
 
-# 3. Statisk IP konfiguration (network.yaml)
+## 2. Generate Talos configuration
 
-Eksempel fra *network.yaml*:
+Talos configuration is generated using a combination of:
+- cluster metadata
+- secrets
+- configuration patches
+
+This is automated in the infrastructure repository using:
+
+```bash
+task talos:build
+```
+
+Internally, this runs `talosctl gen config` with:
+- static networking
+- DNS configuration
+- Cilium-related settings
+- single-node scheduling enabled
+
+Generated files include (not committed to Git):
+
+- `controlplane.yaml`
+- `talosconfig`
+- `secrets.yaml`
+
+These files are written to:
+
+```text
+talos/generated/
+```
+
+---
+
+## 3. Static network configuration
+
+Static networking is defined via a Talos patch.
+
+Example (simplified):
 
 ```yaml
 machine:
   network:
     interfaces:
-      - interface: eth0
+      - interface: <INTERFACE_NAME>
         dhcp: false
         addresses:
-          - 192.168.50.10/24
+          - <NODE_IP>/<SUBNET_CIDR>
         routes:
           - network: 0.0.0.0/0
-            gateway: 192.168.50.1
+            gateway: <GATEWAY_IP>
 ```
 
-Tilpas IP-adresse, subnet og gateway efter jeres miljø.
+> All IP addresses shown are placeholders.  
+> Actual values are defined in the infrastructure repository and `cluster.env`.
 
 ---
 
-# 4. Tillad pods på control-plane (allow-scheduling-on-control-planes.yaml)
+## 4. Allow scheduling on the control plane
 
-Single-node klynger kræver scheduling på control-plane:
+Since this is a **single-node cluster**, workloads must be allowed to run on the control plane.
+
+This is handled via a patch:
 
 ```yaml
 cluster:
@@ -88,87 +121,78 @@ cluster:
 
 ---
 
-# 5. Anvend konfiguration på serveren (apply.sh)
+## 5. Apply Talos configuration to the node
 
-Når Talos kører på sin midlertidige DHCP-adresse:
+Once Talos is running (initially via DHCP), apply the generated configuration.
+
+Recommended approach:
 
 ```bash
-talosctl --talosconfig talosconfig \
- --endpoints 192.168.50.10 \
- --nodes 192.168.50.10 \
- apply-config -f controlplane.yaml
+task talos:apply-insecure
 ```
 
-Eller insecure version (nødvendig første gang):
+This is required **only for the first application**, before certificates are established.
+
+Afterwards, Talos will reboot and come up using the **static IP**.
+
+For subsequent changes, use:
 
 ```bash
-talosctl --talosconfig talosconfig \
- --endpoints 192.168.50.10\
- --nodes 192.168.50.10\
- apply-config -f controlplane.yaml --insecure
-```
-
-Serveren genstarter herefter med den nye statiske IP.
-
----
-
-# 6. (Valgfrit) Test konfiguration (dry run)
-
-```bash
-talosctl --talosconfig talosconfig \
- --endpoints 192.168.50.10 \
- --nodes 192.168.50.10 \
- apply-config -f controlplane.yaml --dry-run
-
+task talos:apply
 ```
 
 ---
 
-# 7. Bootstrap Kubernetes (bootstrap.sh)
+## 6. (Optional) Dry-run validation
 
-Når serveren kører Talos med statisk IP:
+Before applying changes, configuration can be validated without modifying the node:
 
 ```bash
-talosctl --talosconfig talosconfig \
- --endpoints 192.168.50.10 \
- --nodes 192.168.50.10 \
- bootstrap
-
+task talos:apply-dry-run
 ```
 
-Når bootstrappen er færdig:
-
-- etcd er oppe
-- kube-apiserver kører
-- Kubernetes er initialiseret
+This is strongly recommended when making changes to networking or patches.
 
 ---
 
-# 8. Hent kubeconfig (kubeconfig.sh)
+## 7. Bootstrap Kubernetes
 
-For at kunne administrere Kubernetes:
-
-```bash
-talosctl --talosconfig talosconfig \
- --endpoints 192.168.50.10 \
- --nodes 192.168.50.10 \
- kubeconfig
-
-```
-
-Eller manuelt:
+Once Talos is running with the static IP, bootstrap Kubernetes:
 
 ```bash
-talosctl kubeconfig --nodes 192.168.50.10 --force
+FORCE_BOOTSTRAP=1 task talos:bootstrap
 ```
 
-Dette skriver kubeconfig til:
+Bootstrap:
+- initializes etcd
+- starts the Kubernetes control plane
+- makes the API server available
 
-```
-~/.kube/config
+> Bootstrap must be executed **exactly once** per cluster.
+
+---
+
+## 8. Retrieve kubeconfig
+
+After bootstrap, retrieve the Kubernetes kubeconfig:
+
+```bash
+task talos:kubeconfig
 ```
 
-Test:
+This writes a kubeconfig file to:
+
+```text
+talos/generated/kubeconfig
+```
+
+You may export it temporarily:
+
+```bash
+export KUBECONFIG=talos/generated/kubeconfig
+```
+
+Verify access:
 
 ```bash
 kubectl get nodes
@@ -177,16 +201,16 @@ kubectl get pods -A
 
 ---
 
-# 9. Talosctl endpoint og node konfiguration
+## 9. Talos endpoint configuration (optional)
 
-For at undgå at skrive IP-adressen hver gang:
+To avoid specifying node and endpoint on every command:
 
 ```bash
-talosctl config endpoint 192.168.50.10
-talosctl config node 192.168.50.10
+talosctl config endpoint <NODE_IP>
+talosctl config node <NODE_IP>
 ```
 
-Test:
+Verify connectivity:
 
 ```bash
 talosctl version

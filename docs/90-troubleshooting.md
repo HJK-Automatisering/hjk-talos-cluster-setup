@@ -1,20 +1,20 @@
 ---
 layout: default
-title: Fejlfinding og FAQ
+title: Troubleshooting and FAQ
 nav_order: 90
 ---
 
-# Fejlfinding og FAQ
+# Troubleshooting and FAQ
 
-Denne sektion samler de mest almindelige fejlscenarier ved drift af en single-node Talos Kubernetes-klynge, samt løsninger baseret på projektets scripts, konfigurationer og kendte begrænsninger.
+This section collects the most common failure scenarios when operating a **single-node Talos Kubernetes cluster**, along with proven solutions based on project scripts, configuration patterns, and known platform limitations.
 
-Indholdet bygger direkte på praktiske erfaringer samt `history.txt` og `history2.txt` fra projektmappen.
+The content is based on hands-on experience during installation and operation.
 
 ---
 
-# 1. Generelle fejlfindingstrin
+## 1. General troubleshooting checklist
 
-Start altid med følgende kontroller:
+Always start with the basics:
 
 ```bash
 talosctl health
@@ -22,76 +22,72 @@ kubectl get nodes
 kubectl get pods -A
 ```
 
-### Hvis Talos ikke svarer:
-- Serveren kører muligvis stadig på ISO (maintenance mode)
-- Forkert IP-konfiguration i `network.yaml`
-- Firewall/NAT mellem WSL2 og serveren blokerer trafik
+If Talos does not respond:
+
+- The server may still be running from the Talos ISO (maintenance mode)
+- Static IP configuration in `network.yaml` may be incorrect
+- Firewall or routing between WSL2 and the server may block traffic
 
 ---
 
-# 2. Talos relaterede fejl
+## 2. Talos-related issues
 
-## 2.1 “connection refused” eller timeout ved talosctl-kommandoer
+### 2.1 `connection refused` or timeout from talosctl
 
-Mulige årsager:
+Common causes:
 
-- Endpoint er ikke sat:
+- Talos endpoint or node not configured:
   ```bash
-  talosctl config endpoint 192.168.50.10
-  talosctl config node 192.168.50.10
+  talosctl config endpoint <NODE_IP>
+  talosctl config node <NODE_IP>
   ```
-- Serveren kører ikke Talos endnu (stadig i ISO)
-- Statisk IP er ikke blevet anvendt korrekt via `apply.sh`
+- Node is still running from ISO
+- Static IP was not applied correctly
 
-Test:
+Validate:
 
 ```bash
-ping 192.168.50.10
+ping <NODE_IP>
 talosctl version
 ```
 
 ---
 
-## 2.2 Talos health viser fejl
-
-Kør:
+### 2.2 Talos health reports errors
 
 ```bash
-talosctl health --nodes 192.168.50.10
+talosctl health --nodes <NODE_IP>
 ```
 
-Typiske problemer:
+Typical problems:
 
-### Kubernetes API ned
-- Cilium er ikke startet korrekt  
-- Certifikatfejl ved bootstrap  
-- ukorrekt controlplane.yaml
+**Kubernetes API unavailable**
+- Cilium not running or misconfigured
+- Certificate issues during bootstrap
+- Invalid controlplane configuration
 
-### etcd fejl
-- Bootstrap ikke udført:
+**etcd issues**
+- Bootstrap not executed:
   ```bash
-  talosctl bootstrap --nodes 192.168.50.10
+  talosctl bootstrap --nodes <NODE_IP>
   ```
-- Nodens tid/dato er forkert (tjek NTP)
+- System time out of sync (check NTP)
 
 ---
 
-# 3. Kubernetes API fejler (“context deadline exceeded”)
-
-Kør:
+## 3. Kubernetes API errors (`context deadline exceeded`)
 
 ```bash
 kubectl get pods -A
 ```
 
-Hvis API ikke svarer:
+Possible causes:
 
-Mulige årsager:
-- Cilium er ikke installeret eller fejler
-- kube-apiserver pod restart loop
-- Ingen kubeconfig genereret endnu (`kubeconfig.sh`)
+- Cilium not installed or failing
+- kube-apiserver in restart loop
+- kubeconfig not generated yet
 
-Tjek logs:
+Inspect logs:
 
 ```bash
 talosctl logs kube-apiserver
@@ -100,122 +96,104 @@ talosctl logs kubelet
 
 ---
 
-# 4. Fejl i Cilium installation
+## 4. Cilium issues
 
-Hvis pods i kube-system viser CrashLoopBackOff eller Pending:
-
-## 4.1 Tjek status
+### 4.1 Cilium pods not ready
 
 ```bash
 cilium status
 kubectl -n kube-system get pods
 ```
 
-Typiske fejl:
-- Forkert kubeServiceHost / kubeServicePort i values.yaml
-- Manglende rettigheder på Talos (Cilium kræver BPF support)
-- Konflikt mellem Talos default CNI og Cilium
+Common causes:
 
-## 4.2 Løsning
-- Geninstaller Cilium:
-  ```bash
-  helm upgrade --install cilium ./charts/cilium     --namespace kube-system     --values ./charts/cilium/values.yaml
-  ```
+- Wrong `k8sServiceHost` / `k8sServicePort`
+- Talos default CNI not disabled
+- Kernel or BPF limitations
 
-- Kør connectivity test:
-  ```bash
-  cilium connectivity test
-  ```
+### 4.2 Recovery
+
+```bash
+helm upgrade --install cilium ./k8s/charts/cilium   --namespace kube-system   --values ./k8s/charts/cilium/values.yaml
+```
+
+Connectivity test:
+
+```bash
+cilium connectivity test
+```
 
 ---
 
-# 5. Fejl ved Rook Ceph installation
-
-Da dette er en **single-node klynge**, kan visse Ceph-komponenter fejle under opstart.
-
-### Tjek cephcluster status:
+## 5. Rook Ceph issues (single-node)
 
 ```bash
 kubectl -n rook-ceph get cephcluster
 kubectl -n rook-ceph get pods
 ```
 
-Typiske problemer:
+### 5.1 OSDs not starting
+- Disks already formatted or mounted
+- Wrong device filters
+- Permission issues
 
-## 5.1 OSD starter ikke
-- Ingen tilgang til rå blokdevices
-- DS-mapping fejl
-- Forkerte storage paths i manifest.yaml
+### 5.2 MON / MGR instability
+- Insufficient resources
+- Expected warnings in single-node setups
 
-## 5.2 MON eller MGR fejler
-- Ressourcebegrænsninger (Ceph kræver minimum 4GB RAM)
-- PGS krav ikke opfyldt i single-node drift (forvent advarsler)
-
-## 5.3 StorageClass eksisterer ikke
-Kør:
+### 5.3 StorageClass missing
 
 ```bash
 kubectl get storageclass
 ```
 
-Hvis `rook-ceph-block` ikke er default, sæt den:
+Set default if needed:
 
 ```bash
-kubectl patch storageclass rook-ceph-block   -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass rook-ceph-block   -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ```
 
 ---
 
-# 6. Problemer med kubeconfig
+## 6. kubeconfig problems
 
-## 6.1 “The connection to the server was refused”
-
-Løsning:
+### 6.1 API server unreachable
 
 ```bash
-talosctl kubeconfig --nodes 192.168.50.10 --force
+talosctl kubeconfig --nodes <NODE_IP> --force
 ```
 
-Kontrollér:
+Verify:
 
 ```bash
 kubectl config view
 kubectl get nodes
 ```
 
-## 6.2 WSL2 kan ikke nå serveren
+### 6.2 WSL2 cannot reach node
 
-Mulige årsager:
-- Firewall blokerer WSL2-subnet (typisk 172.x.x.x)
-- WSL2’s IP har ændret sig efter reboot
-- Ingen routing mellem Windows-PC og serverens VLAN
+Common causes:
 
-Test:
+- Firewall blocking WSL2 subnet (often 172.x.x.x)
+- WSL2 IP changed after reboot
+- Missing routing between VLANs
 
 ```bash
 ip route
-ping 192.168.50.10
+ping <NODE_IP>
 ```
 
 ---
 
-# 7. Pod kan ikke schedule på single-node cluster
+## 7. Pods cannot schedule on single-node cluster
 
-Denne fejl forekommer hvis:
+Cause:
 
-```
+```yaml
 allowSchedulingOnControlPlanes: false
 ```
 
-Løsning:
-
-Anvend filen:
-
-```
-allow-scheduling-on-control-planes.yaml
-```
-
-Eller opdater cluster med:
+Fix by enabling scheduling:
 
 ```yaml
 cluster:
@@ -224,35 +202,26 @@ cluster:
 
 ---
 
-# 8. Fejl i Helm-installationer
+## 8. Helm-related issues
 
-## 8.1 Chart versionskonflikt
-
-Løsning:
+### 8.1 Chart version conflicts
 
 ```bash
 helm repo update
 ```
 
-## 8.2 Values.yaml ikke indlæst
-
-Tjek:
+### 8.2 Values not applied
 
 ```bash
 helm get values <release>
-```
-
-Geninstaller:
-
-```bash
-helm upgrade --install <release> <path> --values <path>/values.yaml
+helm upgrade --install <release> <chart> --values values.yaml
 ```
 
 ---
 
-# 9. Talos logindsamling
+## 9. Talos logging and diagnostics
 
-Talos anvender ikke SSH — brug:
+Talos does not support SSH.
 
 ```bash
 talosctl logs <service>
@@ -260,7 +229,7 @@ talosctl dmesg
 talosctl service list
 ```
 
-Eksempel:
+Examples:
 
 ```bash
 talosctl logs containerd
@@ -269,45 +238,38 @@ talosctl logs kubelet
 
 ---
 
-# 10. Nød-reboot
-
-Hvis systemet hænger fuldstændig:
+## 10. Emergency reboot
 
 ```bash
-talosctl reboot --nodes 192.168.50.10
+talosctl reboot --nodes <NODE_IP>
 ```
 
 ---
 
-# 11. Kendte begrænsninger
+## 11. Known limitations
 
-- **Single-node Ceph er ikke HA**  
-- **Control-plane og worker deler ressourcer**  
-- **Cilium kræver BPF support**  
-- **Talos kræver korrekt IP-konfiguration ved første apply**
+- Single-node Ceph is **not highly available**
+- Control-plane and workloads share resources
+- Cilium requires kernel BPF support
+- Correct networking is critical during first apply
 
 ---
 
-# 12. Hvis alt andet fejler
+## 12. Full recovery procedure
 
-Genopbyg Talos-konfigurationen:
-
-```bash
-./Bash/build.sh
-./Bash/apply-insecure.sh
-```
-
-Og bootstrap igen:
+If the cluster becomes unrecoverable:
 
 ```bash
-./Bash/bootstrap.sh
-./Bash/kubeconfig.sh
+task talos:build
+task talos:apply-insecure
+task talos:bootstrap
+task talos:kubeconfig
 ```
 
 ---
 
-# 13. Links til videre læsning
+## 13. Further reading
 
-- Talos fejlfinding: https://docs.siderolabs.com/talos/v1.8/reference/cli
-- Cilium debugging: https://docs.cilium.io/en/stable/
-- Rook Ceph troubleshoot: https://rook.io/docs/rook/latest/Troubleshooting/kubectl-plugin/
+- Talos CLI reference: https://docs.siderolabs.com/talos/reference/cli/
+- Cilium troubleshooting: https://docs.cilium.io/en/stable/
+- Rook Ceph troubleshooting: https://rook.io/docs/rook/latest/Troubleshooting/
