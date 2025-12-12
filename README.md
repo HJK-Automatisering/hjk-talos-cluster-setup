@@ -1,79 +1,87 @@
 # HJK Talos Cluster Setup
 
-Denne repository indeholder dokumentationen og konfigurationsfilerne til opsætning af en **single-node Kubernetes-klynge** baseret på:
+This repository contains the **technical documentation** for setting up and operating a **single-node Kubernetes cluster** based on:
 
-- **Talos Linux**  
-- **Cilium** (CNI)  
-- **Rook Ceph** (single-node testmiljø)  
-- **OS2AI**  
-- **Memoctopus MVP**  
-- Adgang fra **Ubuntu WSL2**  
+- **Talos Linux**
+- **Cilium** (CNI)
+- **Rook Ceph** (single-node, non-HA storage)
+- **OS2AI**
+- Access from **Ubuntu WSL2** on developer machines
 
-Formålet er at sikre en ensartet, reproducérbar og veldokumenteret procedure for installation, drift og fejlfinding af klyngen i Hjørring Kommune.
+The goal is to ensure a **consistent, reproducible, and well-documented** installation and operational process for Kubernetes-based AI workloads in **Hjørring Municipality**.
+
+> This repository contains **documentation only**.  
+> Infrastructure-as-Code (IaC), scripts, and cluster configuration live in a **separate repository**.
 
 ---
 
-# Dokumentation
+## Documentation
 
-Den fulde dokumentation ligger i mappen **docs/** og publiceres via GitHub Pages.
+All documentation is located in the **`docs/`** directory and is published via **GitHub Pages**.
 
-Du kan læse dokumentationen her:
-
+**Live documentation:**  
 https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 
 ---
 
-# Dokumentationsstruktur
+## Documentation Structure
 
-| Fil | Indhold |
-|-----|---------|
-| `01-environment.md` | Forberedelse af hardware, netværk, WSL2 og værktøjer |
-| `02-bootstrap.md` | Installation af Talos, patches, apply-scripts og bootstrap |
-| `03-cilium.md` | Installation af Cilium via Helm |
-| `04-rook-ceph.md` | Installation af Rook Ceph (single-node) |
-| `05-wsl-access.md` | Adgang til klyngen via WSL2 |
-| `90-troubleshooting.md` | Fejlfinding for Talos, Kubernetes, Cilium og Ceph |
-
----
-
-# Scripts og konfigurationer
-
-Mappen `Talos/Bash/` indeholder:
-
-- Bash-scripts til installation, apply og bootstrap  
-- Helm charts og values-filer til Cilium og Rook Ceph  
-- YAML-patches til Talos-konfiguration  
-- kubeconfig- og talosconfig-filer  
-- Fejlfinding og historik (`history.txt` og `history2.txt`)
-
-Disse scripts danner grundlaget for dokumentationens beskrivelser og workflows.
+| File | Description |
+|-----|------------|
+| `index.md` | Introduction and overview |
+| `01-environment.md` | Hardware, network, WSL2, and tooling preparation |
+| `02-bootstrap.md` | Talos installation, patches, and Kubernetes bootstrap |
+| `03-cilium.md` | Cilium installation and validation |
+| `04-rook-ceph.md` | Rook Ceph installation (single-node) |
+| `05-wsl-access.md` | Cluster access from WSL2 |
+| `90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
 
-# Forudsætninger
+## Related Repositories
 
-Før installation skal følgende være på plads:
+This documentation is designed to be used together with:
 
-- Udviklermaskine med **Windows 11 + WSL2 (Ubuntu)**  
-- Talos CLI (`talosctl`)  
-- Kubernetes CLI (`kubectl`)  
-- Helm  
-- Cilium CLI  
-- Netværk med adgang til serverens statiske IP  
-- iDRAC adgang til at mounte Talos ISO  
-- Grundlæggende kendskab til Kubernetes og YAML  
+- **Infrastructure repository (IaC & scripts):**  
+  https://github.com/HJK-Automatisering/hjk-talos-cluster
+
+The IaC repository contains:
+- Talos patches and generated configs
+- Bash scripts and Taskfile automation
+- Helm values for Cilium and Rook Ceph
+- Cluster-specific configuration (not public)
 
 ---
 
-# Kom hurtigt i gang
+## Prerequisites
 
-1. Læs **01 – Miljøforberedelse**  
-2. Følg **02 – Installation og bootstrap af Talos**  
-3. Installér Cilium og Ceph  
-4. Deploy OS2AI  
-5. Deploy Memoctopus MVP  
+Before following this documentation, you should have:
 
-Når clusteret kører, kan du administrere det via:
+- Windows 11 with **WSL2 (Ubuntu)**
+- `talosctl`
+- `kubectl`
+- `helm`
+- `cilium` CLI
+- Network access to the server’s **static IP**
+- iDRAC access to mount the Talos ISO
+- Basic knowledge of:
+  - Linux
+  - Kubernetes fundamentals
+  - YAML and Helm
+
+---
+
+## Quick Start
+
+1. Read **01 – Environment preparation**
+2. Follow **02 – Talos installation and bootstrap**
+3. Install:
+   - Cilium
+   - Rook Ceph
+4. Deploy **OS2AI**
+5. Deploy **Memoctopus MVP**
+
+Once the cluster is running, verify access:
 
 ```bash
 talosctl version
@@ -83,9 +91,9 @@ helm ls -A
 
 ---
 
-# Drift og fejlfinding
+## Operations & Troubleshooting
 
-Talos giver stærke værktøjer til diagnosticering:
+Talos diagnostics:
 
 ```bash
 talosctl health
@@ -93,12 +101,22 @@ talosctl logs <service>
 talosctl dmesg
 ```
 
-Kubernetes:
+Kubernetes diagnostics:
 
 ```bash
 kubectl get pods -A
 kubectl describe pod <pod>
 ```
 
-Se **90-troubleshooting.md** for detaljer.
+For common issues and solutions, see:
 
+**`90-troubleshooting.md`**
+
+---
+
+## Ownership
+
+Maintained by:
+
+**Hjørring Municipality – IT & Digitalisation**  
+Responsible for Kubernetes and AI platform infrastructure.
