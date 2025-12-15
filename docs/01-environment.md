@@ -11,6 +11,7 @@ This documentation describes the prerequisites and environment preparation for r
 - **Talos Linux** (minimal, immutable Kubernetes OS)
 - **Cilium** (Container Network Interface)
 - **Rook Ceph** (storage backend)
+- **NVIDIA GPU support** (H100) for AI workloads
 - Access and operations from **Ubuntu WSL2**
 
 > **Important**  

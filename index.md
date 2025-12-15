@@ -60,7 +60,12 @@ Accessing Talos and Kubernetes from Windows via Ubuntu WSL2, including kubeconfi
 
 ---
 
-### 6. Troubleshooting and FAQ
+### 6. NVIDIA GPU enablement
+**File:** `docs/06-nvidia-gpu.md`
+
+---
+
+### 7. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`

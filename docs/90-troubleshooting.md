@@ -202,15 +202,142 @@ cluster:
 
 ---
 
-## 8. Helm-related issues
+## 8. NVIDIA GPU issues
 
-### 8.1 Chart version conflicts
+This section covers common problems related to NVIDIA GPU enablement on Talos-based Kubernetes clusters.
+
+GPU support spans **both Talos OS and Kubernetes**, so issues may appear at either layer.
+
+---
+
+### 8.1 NVIDIA device plugin DaemonSet shows `DESIRED = 0`
+
+Check:
+
+```bash
+kubectl get ds -n kube-system | grep -i nvidia
+```
+
+If `DESIRED` is `0`, the DaemonSet is not matching any nodes.
+
+**Common cause**
+
+The NVIDIA device plugin chart may include a `nodeAffinity` that depends on
+Node Feature Discovery (NFD) labels, for example:
+
+- `feature.node.kubernetes.io/pci-10de.present=true`
+- `nvidia.com/gpu.present=true`
+
+In this setup, **NFD is not installed**, so the affinity prevents scheduling.
+
+**Fix**
+
+Disable affinity in the Helm values:
+
+```yaml
+affinity: null
+```
+
+Then upgrade the release:
+
+```bash
+helm upgrade --install nvidia-device-plugin nvdp/nvidia-device-plugin   -n kube-system   -f k8s/charts/nvidia-device-plugin/values.yaml
+```
+
+Verify:
+
+```bash
+kubectl get ds -n kube-system | grep -i nvidia
+kubectl get pods -n kube-system | grep -i nvidia
+```
+
+---
+
+### 8.2 GPUs not visible on the node (`nvidia.com/gpu` missing)
+
+Check node resources:
+
+```bash
+kubectl describe node <NODE_NAME> | grep -A10 -i nvidia.com/gpu
+```
+
+If no GPU resources are shown:
+
+- Verify the NVIDIA device plugin pod is running
+- Verify Talos has loaded NVIDIA kernel modules
+
+Check on Talos:
+
+```bash
+talosctl read /proc/driver/nvidia/version
+talosctl read /proc/modules | grep nvidia
+```
+
+If modules are missing, reapply the NVIDIA kernel module patch and reboot.
+
+---
+
+### 8.3 `nvidia-smi` fails inside a pod
+
+Example test:
+
+```bash
+kubectl run nvidia-test   --restart=Never   -ti --rm   --image nvcr.io/nvidia/cuda:12.5.0-base-ubuntu22.04   --overrides '{"spec": {"runtimeClassName": "nvidia"}}'   nvidia-smi
+```
+
+**Common causes**
+
+- `runtimeClassName: nvidia` missing
+- NVIDIA container toolkit extension not installed in Talos
+- Device plugin not running
+
+**Notes**
+
+- A PodSecurity warning may appear for this test pod
+- The warning does **not** prevent GPU access
+
+---
+
+### 8.4 NVIDIA driver missing after Talos upgrade
+
+After upgrading Talos, GPUs may stop working if the installer image does not
+include the required NVIDIA extensions.
+
+Verify extensions:
+
+```bash
+talosctl get extensions
+```
+
+If NVIDIA extensions are missing, upgrade Talos using the correct Image Factory installer image:
+
+```bash
+talosctl upgrade   --image factory.talos.dev/installer/<SCHEMATIC_ID>:<TALOS_VERSION>
+```
+
+---
+
+### 8.5 Quick GPU health checklist
+
+```bash
+talosctl read /proc/driver/nvidia/version
+kubectl get ds -n kube-system | grep -i nvidia
+kubectl describe node <NODE_NAME> | grep -A10 -i nvidia.com/gpu
+```
+
+If all three checks succeed, GPU support is operational.
+
+---
+
+## 9. Helm-related issues
+
+### 9.1 Chart version conflicts
 
 ```bash
 helm repo update
 ```
 
-### 8.2 Values not applied
+### 9.2 Values not applied
 
 ```bash
 helm get values <release>
@@ -219,7 +346,7 @@ helm upgrade --install <release> <chart> --values values.yaml
 
 ---
 
-## 9. Talos logging and diagnostics
+## 10. Talos logging and diagnostics
 
 Talos does not support SSH.
 
@@ -238,7 +365,7 @@ talosctl logs kubelet
 
 ---
 
-## 10. Emergency reboot
+## 11. Emergency reboot
 
 ```bash
 talosctl reboot --nodes <NODE_IP>
@@ -246,7 +373,7 @@ talosctl reboot --nodes <NODE_IP>
 
 ---
 
-## 11. Known limitations
+## 12. Known limitations
 
 - Single-node Ceph is **not highly available**
 - Control-plane and workloads share resources
@@ -255,7 +382,7 @@ talosctl reboot --nodes <NODE_IP>
 
 ---
 
-## 12. Full recovery procedure
+## 13. Full recovery procedure
 
 If the cluster becomes unrecoverable:
 
@@ -268,7 +395,7 @@ task talos:kubeconfig
 
 ---
 
-## 13. Further reading
+## 14. Further reading
 
 - Talos CLI reference: https://docs.siderolabs.com/talos/reference/cli/
 - Cilium troubleshooting: https://docs.cilium.io/en/stable/
