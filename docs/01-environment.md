@@ -91,6 +91,12 @@ sudo apt update && sudo apt upgrade -y
 
 All cluster management is performed from WSL2.
 
+### Task
+```bash
+curl -1sLf 'https://dl.cloudsmith.io/public/task/task/setup.rpm.sh' | sudo -E bash
+sudo apt install task
+```
+
 ### Talos CLI
 
 ```bash
