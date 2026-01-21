@@ -4,7 +4,7 @@ title: Open WebUI
 nav_order: 12
 ---
 
-# 12 – Open WebUI (Chat UI + RAG)
+# Open WebUI (Chat UI + RAG)
 
 This section documents how we deploy **Open WebUI** as the user-facing chat interface, integrated with:
 

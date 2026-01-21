@@ -121,7 +121,7 @@ Edit `values.yaml` to ensure:
 Because this is a single-node cluster, some upstream defaults must be changed:
 
 - Use `failureDomain: osd` (not `host`) for pools/filesystems in a single-node environment
-- Ensure pools are set to `replicated.size: 1`
+- Ensure pools are set to `replicated.size: 3`
 - Enable CephFS (`cephFileSystems`) if you rely on it (and ensure its pools also use `failureDomain: osd`)
 
 Example:
