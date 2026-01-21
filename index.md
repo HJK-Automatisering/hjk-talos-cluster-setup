@@ -32,7 +32,8 @@ Below is an overview of the main documentation sections and their purpose.
 5. [05 – WSL Access](docs/05-wsl-access)
 6. [06 – NVIDIA GPU](docs/06-nvidia-gpu)
 7. [09 – Sealed Secrets](docs/09-sealed-secrets)
-8. [90 – Troubleshooting](docs/90-troubleshooting)
+8. [10 – vLLM](docs/10-vllm)
+9. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -72,16 +73,27 @@ Accessing Talos and Kubernetes from Windows via Ubuntu WSL2, including kubeconfi
 ---
 
 ### 6. NVIDIA GPU enablement
+Enabling NVIDIA GPUs on Talos, including drivers, container runtime, RuntimeClass, and device plugin.
+
 **File:** `docs/06-nvidia-gpu.md`
 
 ---
 
-### 6. NVIDIA GPU enablement
+### 7. Sealed Secrets
+Managing application secrets securely using Sealed Secrets in a GitOps workflow.
+
 **File:** `docs/09-sealed-secrets.md`
 
 ---
 
-### 7. Troubleshooting and FAQ
+### 8. vLLM
+Deploying GPU-accelerated inference and embedding workloads using vLLM.
+
+**File:** `docs/10-vllm.md`
+
+---
+
+### 9. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`

@@ -36,6 +36,7 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | `docs/05-wsl-access.md` | Cluster access from WSL2 |
 | `docs/06-nvidia-gpu.md` | NVIDIA GPU enablement and validation |
 | `docs/09-sealed-secrets.md` | GitOps-friendly secrets handling with Sealed Secrets (kubeseal) |
+| `docs/10-vllm.md` | GPU-based inference and embeddings with vLLM |
 | `docs/90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
