@@ -1,4 +1,10 @@
-# 09 – Sealed Secrets (kubeseal)
+---
+layout: default
+title: Sealed Secrets
+nav_order: 9
+---
+
+# Sealed Secrets (kubeseal)
 
 This section describes how application secrets are handled in Kubernetes in a
 secure and GitOps-friendly way using **Sealed Secrets**.

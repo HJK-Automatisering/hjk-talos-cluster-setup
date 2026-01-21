@@ -76,6 +76,11 @@ Accessing Talos and Kubernetes from Windows via Ubuntu WSL2, including kubeconfi
 
 ---
 
+### 6. NVIDIA GPU enablement
+**File:** `docs/09-sealed-secrets.md`
+
+---
+
 ### 7. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
