@@ -25,6 +25,17 @@ The actual **infrastructure-as-code (IaC)** implementation lives in a separate r
 
 Below is an overview of the main documentation sections and their purpose.
 
+1. [01 – Environment](docs/01-environment)
+2. [02 – Bootstrap](docs/02-bootstrap)
+3. [03 – Cilium](docs/03-cilium)
+4. [04 – Rook Ceph](docs/04-rook-ceph)
+5. [05 – WSL Access](docs/05-wsl-access)
+6. [06 – NVIDIA GPU](docs/06-nvidia-gpu)
+7. [09 – Sealed Secrets](docs/09-sealed-secrets)
+8. [90 – Troubleshooting](docs/90-troubleshooting)
+
+---
+
 ### 1. Environment preparation
 Hardware requirements, networking, static IP addressing, WSL2 setup, and required tooling.
 
@@ -77,7 +88,7 @@ Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, 
 This documentation supports:
 
 - Operation and maintenance of a **local single-node Kubernetes cluster** for AI workloads
-- Internal OS2 projects, including **OS2AI** and **Memoctopus**
+- Internal OS2 projects including **OS2AI**
 - Reproducible infrastructure based on scripted workflows and declarative configuration
 - A clear separation between:
   - **Test / development environments** (single-node)
