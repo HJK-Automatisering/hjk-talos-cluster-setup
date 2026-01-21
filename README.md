@@ -29,12 +29,14 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | File | Description |
 |-----|------------|
 | `index.md` | Introduction and overview |
-| `01-environment.md` | Hardware, network, WSL2, and tooling preparation |
-| `02-bootstrap.md` | Talos installation, patches, and Kubernetes bootstrap |
-| `03-cilium.md` | Cilium installation and validation |
-| `04-rook-ceph.md` | Rook Ceph installation (single-node) |
-| `05-wsl-access.md` | Cluster access from WSL2 |
-| `90-troubleshooting.md` | Troubleshooting and FAQ |
+| `docs/01-environment.md` | Hardware, network, WSL2, and tooling preparation |
+| `docs/02-bootstrap.md` | Talos installation, patches, and Kubernetes bootstrap |
+| `docs/03-cilium.md` | Cilium installation and validation |
+| `docs/04-rook-ceph.md` | Rook Ceph installation (single-node) |
+| `docs/05-wsl-access.md` | Cluster access from WSL2 |
+| `docs/06-nvidia-gpu.md` | NVIDIA GPU enablement and validation |
+| `docs/09-sealed-secrets.md` | GitOps-friendly secrets handling with Sealed Secrets (kubeseal) |
+| `docs/90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
 
@@ -79,7 +81,6 @@ Before following this documentation, you should have:
    - Cilium
    - Rook Ceph
 4. Deploy **OS2AI**
-5. Deploy **Memoctopus MVP**
 
 Once the cluster is running, verify access:
 
