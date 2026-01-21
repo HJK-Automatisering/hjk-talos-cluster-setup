@@ -4,7 +4,7 @@ title: LiteLLM
 nav_order: 11
 ---
 
-# 11 – LiteLLM (Proxy + Database)
+# LiteLLM (Proxy + Database)
 
 This section documents how we deploy **LiteLLM** as an OpenAI-compatible proxy in front of our model backends (for example **vLLM**), including a **CloudNativePG** Postgres database for persistence.
 

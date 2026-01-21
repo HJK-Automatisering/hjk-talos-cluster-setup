@@ -4,7 +4,7 @@ title: vLLM
 nav_order: 10
 ---
 
-# 10 – vLLM (Inference & Embeddings)
+# vLLM (Inference & Embeddings)
 
 This section documents how we deploy **vLLM** using the **vLLM Production Stack Helm chart** to run:
 - a large **instruct model**
