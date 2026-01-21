@@ -33,7 +33,8 @@ Below is an overview of the main documentation sections and their purpose.
 6. [06 – NVIDIA GPU](docs/06-nvidia-gpu)
 7. [09 – Sealed Secrets](docs/09-sealed-secrets)
 8. [10 – vLLM](docs/10-vllm)
-9. [90 – Troubleshooting](docs/90-troubleshooting)
+9. [11 – LiteLLM](docs/11-litellm)
+10. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -93,7 +94,14 @@ Deploying GPU-accelerated inference and embedding workloads using vLLM.
 
 ---
 
-### 9. Troubleshooting and FAQ
+### 9. LiteLLM
+Deploying LiteLLM as an OpenAI-compatible proxy in front of model backends, including database persistence and guardrails.
+
+**File:** `docs/11-litellm.md`
+
+---
+
+### 10. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`
