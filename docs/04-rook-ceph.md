@@ -116,6 +116,19 @@ Edit `values.yaml` to ensure:
 - `replicated.size: 1`
 - Correct device selection
 
+### Single-node adjustments (important)
+
+Because this is a single-node cluster, some upstream defaults must be changed:
+
+- Use `failureDomain: osd` (not `host`) for pools/filesystems in a single-node environment
+- Ensure pools are set to `replicated.size: 1`
+- Enable CephFS (`cephFileSystems`) if you rely on it (and ensure its pools also use `failureDomain: osd`)
+
+Example:
+
+- `cephBlockPools[].spec.failureDomain: osd`
+- `cephFileSystems[].spec.dataPools[].failureDomain: osd`
+
 ---
 
 ## 6. Render CephCluster manifest
