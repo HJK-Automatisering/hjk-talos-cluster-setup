@@ -34,7 +34,8 @@ Below is an overview of the main documentation sections and their purpose.
 7. [09 – Sealed Secrets](docs/09-sealed-secrets)
 8. [10 – vLLM](docs/10-vllm)
 9. [11 – LiteLLM](docs/11-litellm)
-10. [90 – Troubleshooting](docs/90-troubleshooting)
+10. [12 – Open WebUI](docs/12-openwebui)
+11. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -101,7 +102,14 @@ Deploying LiteLLM as an OpenAI-compatible proxy in front of model backends, incl
 
 ---
 
-### 10. Troubleshooting and FAQ
+### 10. Open WebUI
+Deploying Open WebUI as the user-facing chat interface, integrated with LiteLLM, vLLM, RAG, and persistence services.
+
+**File:** `docs/12-openwebui.md`
+
+---
+
+### 11. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`

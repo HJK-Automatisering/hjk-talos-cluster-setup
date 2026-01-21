@@ -38,6 +38,7 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | `docs/09-sealed-secrets.md` | GitOps-friendly secrets handling with Sealed Secrets (kubeseal) |
 | `docs/10-vllm.md` | GPU-based inference and embeddings with vLLM |
 | `docs/11-litellm.md` | OpenAI-compatible proxy with database and guardrails (LiteLLM) |
+| `docs/12-openwebui.md` | User-facing chat UI with RAG, LiteLLM, and vLLM integration |
 | `docs/90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
