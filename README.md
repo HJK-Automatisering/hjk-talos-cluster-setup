@@ -37,6 +37,7 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | `docs/06-nvidia-gpu.md` | NVIDIA GPU enablement and validation |
 | `docs/09-sealed-secrets.md` | GitOps-friendly secrets handling with Sealed Secrets (kubeseal) |
 | `docs/10-vllm.md` | GPU-based inference and embeddings with vLLM |
+| `docs/11-litellm.md` | OpenAI-compatible proxy with database and guardrails (LiteLLM) |
 | `docs/90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
