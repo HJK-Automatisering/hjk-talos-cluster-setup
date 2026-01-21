@@ -14,7 +14,7 @@ GPU enablement is intentionally split into **two distinct layers**:
 2. **Kubernetes layer** – RuntimeClass and NVIDIA device plugin to expose GPUs as schedulable resources
 
 This documentation explains **what is required and why**.  
-The concrete configuration, patches, and automation live in the separate infrastructure repository
+The concrete configuration, patches, and automation live in the separate infrastructure repository.
 
 ---
 
@@ -92,9 +92,7 @@ From the infrastructure repository (or anywhere with access to `talos/generated/
 ```bash
 export TALOSCONFIG="$(pwd)/talos/generated/talosconfig"
 
-talosctl --talosconfig "$TALOSCONFIG" \
-  --nodes <NODE_IP> \
-  upgrade --image factory.talos.dev/installer/<SCHEMATIC_ID>:v1.11.5
+talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> upgrade --image factory.talos.dev/installer/<SCHEMATIC_ID>:v1.11.5
 ```
 
 During the upgrade:
@@ -116,7 +114,7 @@ You should see:
 
 ## 4. Loading NVIDIA kernel modules in Talos
 
-Installing the extensions alone is not sufficient.
+Installing the extensions alone is not sufficient.  
 The NVIDIA kernel modules must be explicitly loaded via a Talos machine configuration patch.
 
 In the infrastructure repository, this patch is located at:
@@ -143,22 +141,45 @@ Apply the patch:
 ```bash
 export TALOSCONFIG="$(pwd)/talos/generated/talosconfig"
 
-talosctl --talosconfig "$TALOSCONFIG" \
-  --nodes <NODE_IP> \
-  patch mc --patch @talos/patches/nvidia-oss-modules.yaml
+talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> patch mc --patch @talos/patches/nvidia-oss-modules.yaml
 ```
 
 ### Verify driver and modules
 
 ```bash
-talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> \
-  read /proc/driver/nvidia/version
+talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> read /proc/driver/nvidia/version
 
-talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> \
-  read /proc/modules | grep -E 'nvidia|nvidia_uvm|nvidia_drm|nvidia_modeset'
+talosctl --talosconfig "$TALOSCONFIG" --nodes <NODE_IP> read /proc/modules | grep -E 'nvidia|nvidia_uvm|nvidia_drm|nvidia_modeset'
 ```
 
 If the driver version is shown and modules are loaded, Talos GPU support is complete.
+
+---
+
+## 4.1 NVIDIA container runtime (no-cgroups)
+
+Talos uses **cgroups v2**.  
+In this setup, the NVIDIA container runtime is configured with `no-cgroups = true`.
+
+Patch location:
+
+```
+talos/patches/nvidia-no-cgroups.yaml
+```
+
+Example:
+```yaml
+machine:
+  files:
+    - op: create
+      path: /etc/nvidia-container-runtime/config.toml
+      permissions: 0o644
+      content: |
+        [nvidia-container-cli]
+        no-cgroups = true
+```
+
+> Without this setting, GPU workloads may fail to start with container runtime errors.
 
 ---
 
@@ -183,11 +204,14 @@ metadata:
 handler: nvidia
 ```
 
-Apply:
+> **GitOps note**  
+> In this setup, the RuntimeClass is applied via **ArgoCD**.  
+> Avoid creating it manually with `kubectl` except for temporary debugging.
+
+Verify:
 
 ```bash
-kubectl apply -f k8s/manifests/runtimeclass-nvidia.yaml
-kubectl get runtimeclass
+kubectl get runtimeclass nvidia
 ```
 
 ---
@@ -213,7 +237,7 @@ In this setup:
 In the infrastructure repository:
 
 ```
-k8s/charts/nvidia-device-plugin/values.yaml
+k8s/nvidia-device-plugin/values.yaml
 ```
 
 Example values:
@@ -243,9 +267,7 @@ tolerations:
 helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 helm repo update
 
-helm upgrade --install nvidia-device-plugin nvdp/nvidia-device-plugin \
-  -n kube-system \
-  -f k8s/charts/nvidia-device-plugin/values.yaml
+helm upgrade --install nvidia-device-plugin nvdp/nvidia-device-plugin -n kube-system -f k8s/nvidia-device-plugin/values.yaml
 ```
 
 ### Verify scheduling
@@ -277,18 +299,22 @@ Expected output:
 Run a simple CUDA container and execute `nvidia-smi`:
 
 ```bash
-kubectl run nvidia-test \
-  --restart=Never \
-  -ti --rm \
-  --image nvcr.io/nvidia/cuda:12.5.0-base-ubuntu22.04 \
-  --overrides '{"spec": {"runtimeClassName": "nvidia"}}' \
-  nvidia-smi
+kubectl run nvidia-test --restart=Never -ti --rm --image nvcr.io/nvidia/cuda:12.5.0-base-ubuntu22.04 --overrides '{"spec": {"runtimeClassName": "nvidia"}}' nvidia-smi
 ```
 
 If the command prints GPU information, GPU enablement is successful.
 
 > A PodSecurity warning may appear for this test pod.  
 > This does **not** affect GPU functionality.
+
+---
+
+## Next steps
+
+Once GPU enablement is complete, the cluster is ready for GPU workloads such as:
+
+- **09 – Sealed Secrets** (secure secret management)
+- **10 – vLLM** (GPU-based inference and embeddings, requires `runtimeClassName: nvidia`)
 
 ---
 
