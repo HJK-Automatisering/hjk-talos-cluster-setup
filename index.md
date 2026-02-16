@@ -35,7 +35,8 @@ Below is an overview of the main documentation sections and their purpose.
 8. [10 – vLLM](docs/10-vllm)
 9. [11 – LiteLLM](docs/11-litellm)
 10. [12 – Open WebUI](docs/12-openwebui)
-11. [90 – Troubleshooting](docs/90-troubleshooting)
+11. [13 – Upgrades](docs/13-upgrades)
+12. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -109,7 +110,14 @@ Deploying Open WebUI as the user-facing chat interface, integrated with LiteLLM,
 
 ---
 
-### 11. Troubleshooting and FAQ
+### 11. Upgrading applications
+How to upgrade platform components and applications using the vendor submodule and local overrides.
+
+**File:** `docs/13-upgrades.md`
+
+---
+
+### 12. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`
