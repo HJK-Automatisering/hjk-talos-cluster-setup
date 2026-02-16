@@ -32,12 +32,13 @@ Below is an overview of the main documentation sections and their purpose.
 5. [05 – WSL Access](docs/05-wsl-access)
 6. [06 – NVIDIA GPU](docs/06-nvidia-gpu)
 7. [07 – Argo CD (GitOps)](docs/07-argocd)
-8. [09 – Sealed Secrets](docs/09-sealed-secrets)
-9. [10 – vLLM](docs/10-vllm)
-10. [11 – LiteLLM](docs/11-litellm)
-11. [12 – Open WebUI](docs/12-openwebui)
-12. [13 – Upgrades](docs/13-upgrades)
-13. [90 – Troubleshooting](docs/90-troubleshooting)
+8. [08 – Observability](docs/08-observability)
+9. [09 – Sealed Secrets](docs/09-sealed-secrets)
+10. [10 – vLLM](docs/10-vllm)
+11. [11 – LiteLLM](docs/11-litellm)
+12. [12 – Open WebUI](docs/12-openwebui)
+13. [13 – Upgrades](docs/13-upgrades)
+14. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -88,42 +89,49 @@ Bootstrapping GitOps with Argo CD and the app-of-apps pattern (Argo CD Resources
 **File:** `docs/07-argocd.md`
 ---
 
-### 8. Sealed Secrets
+### 8. Observability (Prometheus, Grafana, Loki, Tempo)
+Deploying and operating the cluster observability stack, including Grafana authentication and datasource wiring for logs and traces.
+
+**File:** `docs/08-observability.md`
+
+---
+
+### 10. Sealed Secrets
 Managing application secrets securely using Sealed Secrets in a GitOps workflow.
 
 **File:** `docs/09-sealed-secrets.md`
 
 ---
 
-### 9. vLLM
+### 11. vLLM
 Deploying GPU-accelerated inference and embedding workloads using vLLM.
 
 **File:** `docs/10-vllm.md`
 
 ---
 
-### 10. LiteLLM
+### 12. LiteLLM
 Deploying LiteLLM as an OpenAI-compatible proxy in front of model backends, including database persistence and guardrails.
 
 **File:** `docs/11-litellm.md`
 
 ---
 
-### 11. Open WebUI
+### 13. Open WebUI
 Deploying Open WebUI as the user-facing chat interface, integrated with LiteLLM, vLLM, RAG, and persistence services.
 
 **File:** `docs/12-openwebui.md`
 
 ---
 
-### 12. Upgrading applications
+### 14. Upgrading applications
 How to upgrade platform components and applications using the vendor submodule and local overrides.
 
 **File:** `docs/13-upgrades.md`
 
 ---
 
-### 13. Troubleshooting and FAQ
+### 15. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **File:** `docs/90-troubleshooting.md`

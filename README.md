@@ -36,6 +36,7 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | `docs/05-wsl-access.md` | Cluster access from WSL2 |
 | `docs/06-nvidia-gpu.md` | NVIDIA GPU enablement and validation |
 | `docs/07-argocd.md` | Argo CD GitOps bootstrap, app-of-apps, and private repo authentication |
+| `docs/08-observability.md` | Observability stack (Prometheus, Grafana, Loki, Tempo) |
 | `docs/09-sealed-secrets.md` | GitOps-friendly secrets handling with Sealed Secrets (kubeseal) |
 | `docs/10-vllm.md` | GPU-based inference and embeddings with vLLM |
 | `docs/11-litellm.md` | OpenAI-compatible proxy with database and guardrails (LiteLLM) |
