@@ -64,96 +64,97 @@ Below is an overview of the main documentation sections grouped by responsibilit
 ### 1. Environment preparation
 Hardware requirements, networking, static IP addressing, WSL2 setup, and required tooling.
 
-**File:** `docs/01-environment.md`
+**Chapter:** [01 – Environment](docs/01-environment)
 
 ---
 
 ### 2. Talos installation and cluster bootstrap
 Booting from ISO, generating cluster configuration, applying patches, and bootstrapping the control plane.
 
-**File:** `docs/02-bootstrap.md`
+**Chapter:** [02 – Bootstrap](docs/02-bootstrap)
 
 ---
 
 ### 3. Cilium installation
 Installing Cilium as the Kubernetes CNI using Helm, validating networking, and troubleshooting datapath issues.
 
-**File:** `docs/03-cilium.md`
+**Chapter:** [03 – Cilium](docs/03-cilium)
 
 ---
 
 ### 4. Rook Ceph installation
 Deploying Rook Ceph in a **single-node configuration**, configuring StorageClasses, and understanding limitations.
 
-**File:** `docs/04-rook-ceph.md`
+**Chapter:** [04 – Rook Ceph](docs/04-rook-ceph)
 
 ---
 
 ### 5. Cluster access from WSL2
 Accessing Talos and Kubernetes from Windows via Ubuntu WSL2, including kubeconfig handling and networking considerations.
 
-**File:** `docs/05-wsl-access.md`
+**Chapter:** [05 – WSL Access](docs/05-wsl-access)
 
 ---
 
 ### 6. NVIDIA GPU enablement
 Enabling NVIDIA GPUs on Talos, including drivers, container runtime, RuntimeClass, and device plugin.
 
-**File:** `docs/06-nvidia-gpu.md`
+**Chapter:** [06 – NVIDIA GPU](docs/06-nvidia-gpu)
+
 ---
 
 ### 7. Argo CD (GitOps)
 Bootstrapping GitOps with Argo CD and the app-of-apps pattern (Argo CD Resources), including authentication to private Git repositories.
 
-**File:** `docs/07-argocd.md`
+**Chapter:** [07 – Argo CD (GitOps)](docs/07-argocd)
 ---
 
 ### 8. Observability (Prometheus, Grafana, Loki, Tempo)
 Deploying and operating the cluster observability stack, including Grafana authentication and datasource wiring for logs and traces.
 
-**File:** `docs/08-observability.md`
+**Chapter:** [08 – Observability](docs/08-observability)
 
 ---
 
-### 10. Sealed Secrets
+### 9. Sealed Secrets
 Managing application secrets securely using Sealed Secrets in a GitOps workflow.
 
-**File:** `docs/09-sealed-secrets.md`
+**Chapter:** [09 – Sealed Secrets](docs/09-sealed-secrets)
 
 ---
 
-### 11. vLLM
+### 10. vLLM
 Deploying GPU-accelerated inference and embedding workloads using vLLM.
 
-**File:** `docs/10-vllm.md`
+**Chapter:** [10 – vLLM](docs/10-vllm)
 
 ---
 
-### 12. LiteLLM
+### 11. LiteLLM
 Deploying LiteLLM as an OpenAI-compatible proxy in front of model backends, including database persistence and guardrails.
 
-**File:** `docs/11-litellm.md`
+**Chapter:** [11 – LiteLLM](docs/11-litellm)
 
 ---
 
-### 13. Open WebUI
+### 12. Open WebUI
 Deploying Open WebUI as the user-facing chat interface, integrated with LiteLLM, vLLM, RAG, and persistence services.
 
-**File:** `docs/12-openwebui.md`
+**Chapter:** [12 – Open WebUI](docs/12-openwebui)
 
 ---
 
-### 14. Upgrading applications
+### 13. Upgrading applications
 How to upgrade platform components and applications using the vendor submodule and local overrides.
 
-**File:** `docs/13-upgrades.md`
+**Chapter:** [13 – Upgrades](docs/13-upgrades)
 
 ---
 
-### 15. Troubleshooting and FAQ
+### 14. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
-**File:** `docs/90-troubleshooting.md`
+**Chapter:** [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 

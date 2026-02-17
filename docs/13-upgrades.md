@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Upgrading Kubernetes Applications
-nav_order: 13
+nav_order: 1
+parent: Operations
 ---
 
 # Upgrading Kubernetes Applications

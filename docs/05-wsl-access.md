@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Accessing the Cluster from WSL2
-nav_order: 8
+nav_order: 5
+parent: Cluster Foundation
 ---
 
 # Accessing the Cluster from WSL2

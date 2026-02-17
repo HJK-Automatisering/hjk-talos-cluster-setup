@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Talos Installation and Cluster Bootstrap
-nav_order: 3
+nav_order: 2
+parent: Cluster Foundation
 ---
 
 # Talos Installation and Cluster Bootstrap

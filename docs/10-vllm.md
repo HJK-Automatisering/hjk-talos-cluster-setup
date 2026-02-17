@@ -1,7 +1,8 @@
 ---
 layout: default
 title: vLLM
-nav_order: 10
+nav_order: 1
+parent: Applications
 ---
 
 # vLLM (Inference & Embeddings)

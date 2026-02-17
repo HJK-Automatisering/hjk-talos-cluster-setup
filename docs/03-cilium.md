@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Cilium Installation
-nav_order: 4
+nav_order: 3
+parent: Cluster Foundation
 ---
 
 # Cilium Installation
