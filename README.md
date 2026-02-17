@@ -42,6 +42,7 @@ https://hjk-automatisering.github.io/hjk-talos-cluster-setup/
 | `docs/11-litellm.md` | OpenAI-compatible proxy with database and guardrails (LiteLLM) |
 | `docs/12-openwebui.md` | User-facing chat UI with RAG, LiteLLM, and vLLM integration |
 | `docs/13-upgrades.md` | Upgrading Kubernetes applications (vendor submodule + overrides + rollout verification) |
+| `docs/16-talos-kubernetes-upgrade.md` | Talos OS and Kubernetes upgrade procedure |
 | `docs/90-troubleshooting.md` | Troubleshooting and FAQ |
 
 ---
