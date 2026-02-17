@@ -7,32 +7,58 @@ parent: Applications
 
 # vLLM (Inference & Embeddings)
 
-This section documents how we deploy **vLLM** using the **vLLM Production Stack Helm chart** to run:
+This chapter documents how we deploy **vLLM** using the **vLLM Production Stack Helm chart** to run:
+
 - a large **instruct model**
 - an **embeddings model**
 
 The deployment assumes:
+
 - a GPU-enabled Talos Kubernetes node
 - NVIDIA drivers and device plugin are working
-- a Kubernetes `RuntimeClass` named **`nvidia`** exists and is managed via **ArgoCD**
+- a Kubernetes `RuntimeClass` named **`nvidia`** exists (managed via GitOps)
+
+---
+
+## Vendor vs overrides (GitOps model)
+
+This documentation follows the repository structure used by the cluster IaC repository:
+
+- **Vendor** contains the upstream application Helm chart (as a submodule)
+- **Overrides** contains municipality / cluster-specific configuration (values + templates)
+
+For vLLM this means:
+
+- Vendor chart: `vendor/applications/vllm`
+- Overrides: `overrides/vllm`
+
+> The vLLM application is deployed via **Argo CD** (app-of-apps) and should be treated as GitOps-managed.  
+> Manual `helm install` is not recommended for day-to-day operation.
 
 ---
 
 ## Project structure
 
-The vLLM application lives under:
+### Vendor chart (upstream)
 
-`applications/vllm/`
+`vendor/applications/vllm/`
 
-```text
-applications/vllm/
+```
+vendor/applications/vllm/
 ├── Chart.yaml
 ├── gpu-test.yml
-├── local-secrets/
-│   ├── hf-secret.yaml
-│   └── vllm-secret.yaml
-├── templates/
-│   ├── metrics-service.yml
+├── templates
+│   └── metrics-service.yml
+└── values.yaml
+```
+
+### Overrides (cluster-specific)
+
+`overrides/vllm/`
+
+```
+overrides/vllm/
+├── templates
 │   ├── sealed-hf-secret.yaml
 │   └── sealed-vllm-secret.yaml
 └── values.yaml
@@ -46,12 +72,12 @@ applications/vllm/
 
 Before deploying vLLM, ensure that GPU scheduling works.
 
-A test pod is provided:
+A test pod is provided by the vendor chart:
 
-`applications/vllm/gpu-test.yml`
+`vendor/applications/vllm/gpu-test.yml`
 
 ```bash
-kubectl apply -f applications/vllm/gpu-test.yml
+kubectl apply -f vendor/applications/vllm/gpu-test.yml
 kubectl logs -f pod/gpu-test
 ```
 
@@ -61,7 +87,7 @@ Expected output must include `nvidia-smi` information.
 
 ### RuntimeClass `nvidia`
 
-The vLLM chart explicitly uses:
+The vLLM deployment uses:
 
 ```yaml
 runtimeClassName: "nvidia"
@@ -69,7 +95,7 @@ runtimeClassName: "nvidia"
 
 Therefore, Kubernetes must provide a matching `RuntimeClass`.
 
-This repository defines it as a manifest managed by **ArgoCD**:
+This cluster defines it as a manifest (managed by GitOps):
 
 `k8s/manifests/runtimeclass-nvidia.yaml`
 
@@ -81,19 +107,21 @@ metadata:
 handler: nvidia
 ```
 
-> This RuntimeClass must exist **before** vLLM pods are scheduled.
-
 Verify:
 
 ```bash
 kubectl get runtimeclass nvidia
 ```
 
+> This RuntimeClass must exist **before** vLLM pods are scheduled.
+
 ---
 
-## Helm chart
+## Helm chart (vendor)
 
-`applications/vllm/Chart.yaml`:
+The vLLM application is defined as a Helm chart with a dependency on the upstream vLLM Production Stack:
+
+`vendor/applications/vllm/Chart.yaml`
 
 ```yaml
 apiVersion: v2
@@ -108,35 +136,55 @@ dependencies:
 
 ---
 
-## Secrets
+## Secrets (Hugging Face + vLLM API key)
 
 vLLM requires two secrets:
 
-1. **Hugging Face token** (model downloads)
-2. **vLLM API key** (OpenAI-compatible endpoint)
+1. **Hugging Face token** (for downloading models)
+2. **vLLM API key** (for OpenAI-compatible access)
 
-Plaintext secrets are stored locally and sealed before committing.
+In the GitOps model, secrets are committed as **SealedSecrets**:
+
+- `overrides/vllm/templates/sealed-hf-secret.yaml`
+- `overrides/vllm/templates/sealed-vllm-secret.yaml`
+
+> Never commit plaintext tokens into Git.  
+> Use Sealed Secrets (kubeseal) and keep plaintext values local only.
 
 ---
 
-## Configuration overview (`values.yaml`)
+## Configuration overview (overrides)
 
-### Deployment strategy
+The main cluster-specific configuration is stored in:
 
-Single-GPU environment requires:
+`overrides/vllm/values.yaml`
 
-```yaml
-strategy:
-  type: Recreate
-```
+The override file typically configures:
 
-This avoids GPU contention by ensuring the old pod is terminated before a new one is scheduled.
+- `runtimeClassName: nvidia`
+- model images and tags
+- model URLs (Hugging Face / HF Hub identifiers)
+- resources (CPU / memory / GPU requests)
+- persistent storage for model cache
+- node selection strategy (vGPU vs physical GPU)
+
+---
+
+### Deployment strategy (single GPU)
+
+In a single-GPU environment, it is common to use a deployment strategy that avoids GPU contention.  
+Depending on the upstream chart, this can be implemented as:
+
+- `strategy: Recreate`, or
+- `replicaCount: 1` with careful rollout configuration
+
+If you see GPU scheduling conflicts during rollouts, prefer **Recreate-like behavior** so the old pod is terminated before a new one starts.
 
 ---
 
 ### RuntimeClass
 
-All vLLM engine pods use:
+All vLLM engine pods should use:
 
 ```yaml
 runtimeClassName: "nvidia"
@@ -148,9 +196,9 @@ This ensures pods run using the NVIDIA container runtime.
 
 ### Node selection (important)
 
-Both the **inference model** and **embeddings model** explicitly define `nodeSelectorTerms`.
+Both the instruct and embeddings models can define `nodeSelectorTerms`.
 
-Example from `values.yaml`:
+Example pattern:
 
 ```yaml
 nodeSelectorTerms:
@@ -165,80 +213,18 @@ nodeSelectorTerms:
           - NODE
 ```
 
-#### Why this matters
-
-- In **AarhusAI**, GPU workloads typically run on **virtual GPUs (vGPU)**.
-  - Nodes are selected using the label:
-    ```yaml
-    nvidia.com/vgpu.present: "true"
-    ```
-  - Multiple GPU nodes may exist, and scheduling is more dynamic.
-
-- In **this cluster**, we run on **bare metal with physical GPUs**.
-  - No vGPU layer is present
-  - Therefore, the `nvidia.com/vgpu.present` selector is **commented out**
-  - Pods are pinned directly to a specific node using:
-    ```yaml
-    kubernetes.io/hostname: NODE
-    ```
-
-Replace `NODE` with the actual hostname of your GPU node.
-
-> If additional GPU nodes are added in the future, this logic should be revisited and generalized.
+Replace `NODE` with the hostname of your GPU node(s).
 
 ---
 
-### Models
+## Deployment via Argo CD
 
-Two models are configured:
+High-level deployment order:
 
-#### Instruct model
-
-- Large instruct model (e.g. Mistral)
-- GPU: 1
-- Memory: ~56Gi
-- Persistent storage for model cache
-- Chunked prefill and prefix caching enabled
-
-#### Embeddings model
-
-- Smaller embedding model
-- GPU: 1
-- Memory: ~16Gi
-- CUDA graph explicitly disabled to support embedding model loading
-
----
-
-### API key configuration
-
-```yaml
-vllmApiKey:
-  secretName: "vllm-secret"
-  secretKey: "KEY"
-```
-
----
-
-### Tolerations
-
-GPU nodes are typically tainted. vLLM pods tolerate GPU taints:
-
-```yaml
-tolerations:
-  - key: "node-role.kubernetes.io/gpu"
-    operator: "Exists"
-```
-
----
-
-## Deployment via ArgoCD
-
-Recommended order:
-
-1. GPU enablement completed
-2. RuntimeClass `nvidia` applied via ArgoCD
-3. Sealed secrets committed
-4. ArgoCD application synced
+1. GPU enablement completed  
+2. RuntimeClass `nvidia` applied  
+3. Sealed secrets committed  
+4. Argo CD application synced  
 
 ---
 
@@ -254,11 +240,4 @@ kubectl get secret -n vllm
 
 ## Summary
 
-vLLM is deployed using the **vLLM Production Stack** and managed entirely via **GitOps**.
-
-Key requirements:
-- Functional NVIDIA GPU support
-- RuntimeClass `nvidia` managed by ArgoCD
-- Correct node selection strategy (vGPU vs physical GPU)
-- Sealed Secrets for credentials
-- ArgoCD as the single source of truth
+vLLM is deployed using the **vLLM Production Stack** and managed via **GitOps**.
