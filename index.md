@@ -57,7 +57,8 @@ Below is an overview of the main documentation sections grouped by responsibilit
 ### Operations
 
 13. [13 – Upgrades](docs/13-upgrades)
-14. [90 – Troubleshooting](docs/90-troubleshooting)
+14. [16 – Talos & Kubernetes Upgrades](docs/16-talos-kubernetes-upgrade)
+15. [90 – Troubleshooting](docs/90-troubleshooting)
 
 ---
 
@@ -151,7 +152,13 @@ How to upgrade platform components and applications using the vendor submodule a
 
 ---
 
-### 14. Troubleshooting and FAQ
+### 16. Talos & Kubernetes Upgrades
+Procedure for upgrading Talos OS, talosctl client, and Kubernetes version including NVIDIA system extensions.
+
+**Chapter:** [16 – Talos & Kubernetes Upgrades](docs/16-talos-kubernetes-upgrade)
+
+
+### 15. Troubleshooting and FAQ
 Common failure scenarios related to Talos, Kubernetes, Cilium, Rook Ceph, WSL2, and recovery procedures.
 
 **Chapter:** [90 – Troubleshooting](docs/90-troubleshooting)
