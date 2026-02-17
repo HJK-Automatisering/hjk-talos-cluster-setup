@@ -1,5 +1,5 @@
 ---
-title: 16 – Talos & Kubernetes Upgrades
+title: Talos & Kubernetes Upgrades
 nav_order: 3
 parent: Operations
 ---
