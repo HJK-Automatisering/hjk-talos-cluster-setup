@@ -1,6 +1,7 @@
 ---
 title: 07 – Argo CD (GitOps)
-nav_order: 7
+nav_order: 1
+parent: Platform Management
 ---
 
 # Argo CD (GitOps)

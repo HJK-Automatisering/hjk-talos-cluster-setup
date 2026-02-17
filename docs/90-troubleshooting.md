@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Troubleshooting and FAQ
-nav_order: 90
+nav_order: 2
+parent: Operations
 ---
 
 # Troubleshooting and FAQ

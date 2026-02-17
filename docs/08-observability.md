@@ -1,6 +1,7 @@
 ---
 title: 08 – Observability (Prometheus, Grafana, Loki, Tempo)
-nav_order: 8
+nav_order: 2
+parent: Platform Management
 ---
 
 # Observability (Prometheus, Grafana, Loki, Tempo)

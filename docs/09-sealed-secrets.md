@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Sealed Secrets
-nav_order: 9
+nav_order: 3
+parent: Platform Management
 ---
 
 # Sealed Secrets (kubeseal)

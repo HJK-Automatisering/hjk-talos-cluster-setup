@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Open WebUI
-nav_order: 12
+nav_order: 3
+parent: Applications
 ---
 
 # Open WebUI (Chat UI + RAG)

@@ -1,7 +1,8 @@
 ---
 layout: default
 title: LiteLLM
-nav_order: 11
+nav_order: 2
+parent: Applications
 ---
 
 # LiteLLM (Proxy + Database)

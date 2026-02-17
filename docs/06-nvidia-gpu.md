@@ -2,6 +2,7 @@
 layout: default
 title: NVIDIA GPU Enablement (H100)
 nav_order: 6
+parent: Cluster Foundation
 ---
 
 # NVIDIA GPU Enablement (H100)

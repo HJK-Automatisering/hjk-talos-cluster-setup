@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Rook Ceph Installation (single-node)
-nav_order: 5
+nav_order: 4
+parent: Cluster Foundation
 ---
 
 # Rook Ceph Installation (single-node)
