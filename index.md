@@ -23,7 +23,11 @@ The actual **infrastructure-as-code (IaC)** implementation lives in a separate r
 
 ## Documentation structure
 
-Below is an overview of the main documentation sections and their purpose.
+Below is an overview of the main documentation sections grouped by responsibility.
+
+---
+
+### Cluster Foundation
 
 1. [01 – Environment](docs/01-environment)
 2. [02 – Bootstrap](docs/02-bootstrap)
@@ -31,12 +35,27 @@ Below is an overview of the main documentation sections and their purpose.
 4. [04 – Rook Ceph](docs/04-rook-ceph)
 5. [05 – WSL Access](docs/05-wsl-access)
 6. [06 – NVIDIA GPU](docs/06-nvidia-gpu)
+
+---
+
+### Platform Management (GitOps & Control Plane)
+
 7. [07 – Argo CD (GitOps)](docs/07-argocd)
 8. [08 – Observability](docs/08-observability)
 9. [09 – Sealed Secrets](docs/09-sealed-secrets)
+
+---
+
+### Applications (AI Platform Components)
+
 10. [10 – vLLM](docs/10-vllm)
 11. [11 – LiteLLM](docs/11-litellm)
 12. [12 – Open WebUI](docs/12-openwebui)
+
+---
+
+### Operations
+
 13. [13 – Upgrades](docs/13-upgrades)
 14. [90 – Troubleshooting](docs/90-troubleshooting)
 
