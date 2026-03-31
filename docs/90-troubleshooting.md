@@ -401,3 +401,269 @@ task talos:kubeconfig
 - Talos CLI reference: https://docs.siderolabs.com/talos/reference/cli/
 - Cilium troubleshooting: https://docs.cilium.io/en/stable/
 - Rook Ceph troubleshooting: https://rook.io/docs/rook/latest/Troubleshooting/
+
+---
+
+## 15. CloudNativePG volume expansion and instance rebuild
+
+This section covers a common recovery pattern for **CloudNativePG** when a Postgres instance
+fails because the PVC is too small or the cluster enters a degraded state after storage pressure.
+
+This procedure was validated during recovery of application databases running on
+**Rook Ceph block storage** (`ceph-block`).
+
+---
+
+### 15.1 Symptoms
+
+Typical symptoms:
+
+```bash
+kubectl get pods -A
+kubectl get cluster -A
+```
+
+Examples:
+
+- A CNPG instance is in `CrashLoopBackOff`
+- Application pods are running but not ready
+- `kubectl get cluster` reports:
+  - `Not enough disk space`
+  - `Waiting for the instances to become active`
+  - `Cluster Is Not Ready`
+
+CNPG logs may show:
+
+```text
+Detected low-disk space condition, avoid starting the instance
+```
+
+---
+
+### 15.2 Verify the problem
+
+Check cluster state:
+
+```bash
+kubectl -n <namespace> get cluster
+kubectl -n <namespace> get cluster <cluster-name> -o yaml
+kubectl -n <namespace> get pods -o wide
+```
+
+Check current PVC sizes:
+
+```bash
+kubectl -n <namespace> get pvc
+kubectl -n <namespace> get pvc <pvc-name> -o yaml
+```
+
+Check whether the StorageClass supports expansion:
+
+```bash
+kubectl get storageclass ceph-block -o yaml
+```
+
+Expected:
+
+```yaml
+allowVolumeExpansion: true
+```
+
+If a healthy CNPG instance still exists, inspect filesystem usage:
+
+```bash
+kubectl -n <namespace> exec -it <healthy-db-pod> -c postgres -- df -h
+kubectl -n <namespace> exec -it <healthy-db-pod> -c postgres -- du -sh /var/lib/postgresql/data/pgdata
+kubectl -n <namespace> exec -it <healthy-db-pod> -c postgres -- du -sh /var/lib/postgresql/data/pgdata/pg_wal
+```
+
+---
+
+### 15.3 Update desired storage in Git
+
+Increase the CNPG storage size in Git before doing instance recovery.
+
+Recommended pattern:
+
+- keep application values in `overrides/<app>/values.yaml`
+- keep CNPG-specific settings in a dedicated file:
+  - `overrides/<app>/cloudnative-pg-values.yaml`
+
+Example:
+
+```yaml
+cloudnative-pg:
+  cluster:
+    storage:
+      size: 20Gi
+```
+
+Then ensure the Argo CD application includes the file as the last values file so it overrides vendor defaults.
+
+Example pattern:
+
+```yaml
+valueFiles:
+  - cloudnative-pg-values.yaml
+  - values.yaml
+  - ../../../overrides/<app>/values.yaml
+  - ../../../overrides/<app>/cloudnative-pg-values.yaml
+```
+
+---
+
+### 15.4 Validate with Helm before merge
+
+Render the chart locally before merging:
+
+```bash
+helm dependency build ./vendor/applications/<app>
+
+helm template <release-name> ./vendor/applications/<app> \
+  -f ./vendor/applications/<app>/cloudnative-pg-values.yaml \
+  -f ./vendor/applications/<app>/values.yaml \
+  -f ./overrides/<app>/values.yaml \
+  -f ./overrides/<app>/cloudnative-pg-values.yaml \
+  > /tmp/<app>-rendered.yaml
+```
+
+Inspect the rendered CNPG cluster:
+
+```bash
+sed -n '/kind: Cluster/,+160p' /tmp/<app>-rendered.yaml
+```
+
+Verify:
+
+```yaml
+storage:
+  size: 20Gi
+```
+
+---
+
+### 15.5 If PVCs do not resize automatically
+
+Even when Argo CD is synced and the CNPG cluster spec shows the new size, the PVCs may still remain at the old size.
+
+Check:
+
+```bash
+kubectl -n <namespace> get cluster <cluster-name> -o yaml | grep -A3 'storage:'
+kubectl -n <namespace> get pvc
+```
+
+If the cluster shows the new desired size but the PVCs still show the old size, patch the PVCs manually:
+
+```bash
+kubectl -n <namespace> patch pvc <pvc-1> --type merge -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
+kubectl -n <namespace> patch pvc <pvc-2> --type merge -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
+```
+
+Verify:
+
+```bash
+kubectl -n <namespace> get pvc
+kubectl -n <namespace> get pvc <pvc-1> -o yaml | grep -A6 'resources:'
+kubectl -n <namespace> get pvc <pvc-2> -o yaml | grep -A6 'resources:'
+```
+
+---
+
+### 15.6 Recover a broken instance by scaling down and back up
+
+If one instance remains broken after storage expansion, recover the cluster by temporarily reducing replicas.
+
+Scale down to one instance:
+
+```bash
+kubectl -n <namespace> patch cluster <cluster-name> --type merge -p '{"spec":{"instances":1}}'
+```
+
+Verify the spec changed:
+
+```bash
+kubectl -n <namespace> get cluster <cluster-name> -o jsonpath='{.spec.instances}{"\n"}'
+```
+
+If the broken instance does not disappear automatically, delete the Pod:
+
+```bash
+kubectl -n <namespace> delete pod <broken-db-pod>
+```
+
+Wait until the cluster is stable with one ready instance:
+
+```bash
+kubectl -n <namespace> get pods
+kubectl -n <namespace> get cluster <cluster-name> -o yaml | grep -E 'readyInstances|currentPrimary|phase'
+```
+
+Expected result:
+
+- only one DB pod remains
+- phase becomes healthy
+- applications depending on the database may recover
+
+Then restore high availability:
+
+```bash
+kubectl -n <namespace> patch cluster <cluster-name> --type merge -p '{"spec":{"instances":2}}'
+kubectl -n <namespace> get pods -w
+```
+
+CNPG should create a fresh replica automatically.
+
+---
+
+### 15.7 If the old instance still blocks recovery
+
+If scaling down is not enough and the broken instance identity remains stuck, it may be necessary to delete the old PVC **after** the cluster is stable at one instance.
+
+Only do this after confirming that one healthy instance remains.
+
+Example:
+
+```bash
+kubectl -n <namespace> delete pvc <broken-instance-pvc>
+```
+
+This forces CNPG to rebuild the replica from the remaining healthy instance.
+
+---
+
+### 15.8 Verification after recovery
+
+Check cluster health:
+
+```bash
+kubectl -n <namespace> get pods
+kubectl -n <namespace> get cluster <cluster-name> -o yaml | grep -E 'readyInstances|currentPrimary|phase'
+```
+
+Expected:
+
+- primary is running
+- replica is running
+- `readyInstances: 2`
+- `phase: Cluster in healthy state`
+
+Check application pods:
+
+```bash
+kubectl -n <namespace> get pods
+```
+
+For Open WebUI specifically, the web pods should return to `1/1 Running` once the database becomes healthy again.
+
+---
+
+### 15.9 Notes
+
+- This recovery pattern was used successfully for both **Authentik** and **Open WebUI**
+- The issue may present differently:
+  - invalid storage shrink in GitOps
+  - PVC too small / low-disk-space protection
+  - broken replica stuck in restart loop
+- On `ceph-block`, volume expansion is supported, but PVCs may still need manual patching
+- Always update the GitOps source of truth first before performing manual recovery actions

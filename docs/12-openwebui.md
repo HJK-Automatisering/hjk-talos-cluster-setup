@@ -282,6 +282,29 @@ cloudnative-pg:
     enabled: false
 ```
 
+### Database storage recovery
+
+If the CNPG cluster enters `Not enough disk space` state or a database instance goes into `CrashLoopBackOff`, increase CNPG storage via a dedicated override file rather than mixing DB settings into the main Open WebUI values file.
+
+Recommended file:
+
+- `overrides/openwebui/cloudnative-pg-values.yaml`
+
+Example:
+
+```yaml
+cloudnative-pg:
+  cluster:
+    storage:
+      size: 20Gi
+```
+
+Also ensure the file is included in the Argo CD application as the last values file so it overrides the vendor defaults.
+
+For full step-by-step recovery, including PVC expansion and replica rebuild, see:
+
+- **Operations → Troubleshooting and FAQ**
+
 ---
 
 ## Websocket / multi-replica support (Redis)
