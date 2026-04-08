@@ -73,8 +73,8 @@ Select:
 customization:
   systemExtensions:
     officialExtensions:
-      - siderolabs/nvidia-container-toolkit-production
-      - siderolabs/nvidia-open-gpu-kernel-modules-production
+      - siderolabs/nvidia-container-toolkit-lts
+      - siderolabs/nvidia-open-gpu-kernel-modules-lts
 ```
 
 The factory generates a **schematic ID**.
