@@ -6,12 +6,13 @@ parent: Platform Management
 
 # Observability (Prometheus, Grafana, Loki, Tempo)
 
-This cluster includes a standard observability stack for metrics, logs, and traces.
+This cluster includes a standard observability stack for metrics, logs, traces, dashboards, and alerting.
 
-- **Prometheus Stack** (Prometheus + Alerting components + Grafana)
+- **Prometheus Stack** (Prometheus + Alertmanager + Grafana)
 - **Loki** (logs)
 - **Tempo** (traces)
-- (Optional) **Alloy** (agent/collector depending on how it is configured in your vendor setup)
+- **Alloy** (OpenTelemetry / collection pipeline)
+- **prometheus-msteams** (bridge from Alertmanager to Microsoft Teams)
 
 The stack is deployed via **Argo CD** using the **vendor + overrides** model.
 
@@ -37,15 +38,19 @@ The vendor `prometheus-stack` chart also ships example dashboards as templates:
 Cluster-specific changes live under:
 
 - `overrides/prometheus-stack/values.yaml`
-- `overrides/prometheus-stack/templates/*` (e.g. sealed secrets)
+- `overrides/prometheus-stack/templates/*`
+- `overrides/prometheus-msteams/*`
 
 This typically includes:
 
 - Grafana ingress configuration
-- OAuth/OIDC authentication settings
+- OAuth / OIDC authentication settings
 - Datasource wiring (Loki + Tempo)
 - TLS and domain settings
-- Any required secrets (OIDC client secret, etc.)
+- Custom dashboards
+- Alert rules
+- Alert routing to Microsoft Teams
+- Any required secrets (OIDC client secret, Teams webhook, etc.)
 
 ---
 
@@ -61,6 +66,7 @@ Typical apps:
 - `loki` (namespace `monitoring`)
 - `tempo` (namespace `monitoring`)
 - `alloy` (namespace `monitoring`)
+- `prometheus-msteams` (namespace `monitoring`)
 
 Once Argo CD is bootstrapped, the stack is reconciled automatically by Argo CD.
 
@@ -74,13 +80,13 @@ Cluster settings are defined in:
 
 Common configuration areas:
 
-### Grafana Ingress / external access
+### Grafana ingress / external access
 Ingress settings are cluster-specific and configured in the overrides values file.
 
 Because different municipalities will use different DNS and domains, the documentation stays generic:
 
-- Update the Grafana ingress host(s) to match your environment
-- Ensure TLS secret name matches your cluster (e.g. wildcard cert)
+- update the Grafana ingress host(s) to match your environment
+- ensure TLS secret name matches your cluster (for example wildcard cert)
 
 Example (conceptual):
 
@@ -109,7 +115,7 @@ Grafana can be configured to authenticate using an OIDC provider (for example Au
 In this setup:
 
 - Grafana reads the OIDC client secret from an environment variable
-- The secret is provided via a Kubernetes Secret (often via Sealed Secrets)
+- the secret is provided via a Kubernetes Secret (often via Sealed Secrets)
 
 ### Sealed secret
 The override includes a template like:
@@ -130,9 +136,9 @@ Example concepts:
 - `auth.generic_oauth.enabled = true`
 - `auth.generic_oauth.client_id = ...`
 - `auth.generic_oauth.client_secret = $__env{GRAFANA_OAUTH_CLIENT_SECRET}`
-- issuer/authorize/token/userinfo endpoints for your provider
+- issuer / authorize / token / userinfo endpoints for your provider
 
-> Important: Keep all municipality-specific URLs (issuer/auth/token endpoints and domains) in overrides only.
+> Important: Keep all municipality-specific URLs (issuer, auth, token, userinfo, and domains) in overrides only.
 
 ---
 
@@ -147,8 +153,8 @@ This repo uses a custom Grafana image that includes the internal CA certificate:
 
 Example pattern:
 
-1. Copy the internal CA certificate into the container
-2. Install/update CA certificates in the image
+1. copy the internal CA certificate into the container
+2. install / update CA certificates in the image
 
 This is necessary when:
 
@@ -195,6 +201,119 @@ This enables cross-navigation:
 
 ---
 
+## Custom dashboards
+
+In addition to the vendor-provided dashboards, this cluster includes custom dashboards committed as ConfigMaps under:
+
+- `overrides/prometheus-stack/templates/`
+
+Typical custom dashboards include:
+
+- `openwebui-dashboard.yaml`
+- `vllm-dashboard.yaml`
+- `litellm-dashboard.yaml`
+
+The current setup also includes GPU monitoring resources under:
+
+- `dcgm-exporter-daemonset.yaml`
+- `dcgm-exporter-service.yaml`
+- `dcgm-exporter-servicemonitor.yaml`
+
+### Current dashboard coverage
+
+The current dashboard set provides an operational baseline for:
+
+- **DCGM / GPU monitoring**
+- **Open WebUI**
+- **vLLM**
+- **LiteLLM**
+
+These dashboards are intended to provide practical visibility into:
+
+- infrastructure health
+- GPU usage and memory pressure
+- inference latency and throughput
+- proxy latency and spend metrics
+- application metrics and logs
+
+> Important: Dashboard queries may need small adjustments if upstream metric names change between application versions.
+
+---
+
+## Alerting
+
+This cluster includes Prometheus alert rules for the main platform components.
+
+Alert rules are committed in:
+
+- `overrides/prometheus-stack/templates/alerts-gpu.yaml`
+- `overrides/prometheus-stack/templates/alerts-vllm.yaml`
+- `overrides/prometheus-stack/templates/alerts-litellm.yaml`
+- `overrides/prometheus-stack/templates/alerts-openwebui.yaml`
+
+The initial alert set is intentionally small and focused on:
+
+- exporter / target availability
+- missing metrics
+- sustained high latency
+- GPU pressure
+
+### Current alert coverage
+
+The current setup includes alerts for:
+
+- **DCGM exporter availability**
+- **vLLM engine availability**
+- **vLLM latency**
+- **LiteLLM availability**
+- **LiteLLM latency**
+- **Open WebUI metrics missing**
+
+These alerts use labels such as:
+
+```yaml
+team: platform
+severity: critical
+component: vllm
+```
+
+This makes it possible to route platform alerts separately from other future alert categories.
+
+---
+
+## Alert routing to Microsoft Teams
+
+Alert delivery is configured as:
+
+- **Prometheus / Alertmanager** evaluates and routes alerts
+- **prometheus-msteams** receives Alertmanager webhook notifications
+- **Microsoft Teams** receives alerts in a dedicated channel
+
+The Teams bridge is deployed from:
+
+- `overrides/prometheus-msteams/`
+
+and registered via:
+
+- `overrides/argo-cd-resources/values.yaml`
+
+Alertmanager routing is configured in:
+
+- `overrides/prometheus-stack/values.yaml`
+
+### Teams channel
+
+The current setup routes platform alerts to the Teams channel:
+
+- `platform-alerts`
+
+The bridge uses a Teams webhook stored as a Kubernetes Secret / SealedSecret.
+
+> Important: Never commit a plaintext Teams webhook URL to Git.
+> Store it only in Kubernetes Secrets / SealedSecrets.
+
+---
+
 ## Access Grafana
 
 ### Option A: Port-forward (recommended for initial validation)
@@ -222,27 +341,45 @@ kubectl -n monitoring get pods
 ### 2) Grafana datasources present
 In Grafana UI:
 
-- Check **Connections → Data sources**
-- Ensure Prometheus is present
-- Ensure Loki and Tempo are present (if enabled)
+- check **Connections → Data sources**
+- ensure Prometheus is present
+- ensure Loki and Tempo are present (if enabled)
 
 ### 3) Dashboards present
 In Grafana UI:
 
-- Check **Dashboards**
-- Confirm vendor dashboards (GPU / FastAPI / WebUI) exist if those templates are enabled
+- check **Dashboards**
+- confirm vendor dashboards exist if those templates are enabled
+- confirm custom dashboards for Open WebUI, vLLM, LiteLLM, and GPU monitoring are present
 
 ### 4) Loki logs query works
 In Grafana Explore:
 
-- Select Loki datasource
-- Query `{namespace="monitoring"}` or another relevant namespace
+- select Loki datasource
+- query `{namespace="monitoring"}` or another relevant namespace
 
 ### 5) Tempo traces visible (if instrumented)
 In Grafana Explore:
 
-- Select Tempo datasource
-- Query traces for instrumented services
+- select Tempo datasource
+- query traces for instrumented services
+
+### 6) Prometheus alert rules present
+```bash
+kubectl -n monitoring get prometheusrule
+```
+
+### 7) Alertmanager running
+```bash
+kubectl -n monitoring get pods | grep alertmanager
+```
+
+### 8) Teams bridge running
+```bash
+kubectl -n monitoring get pods | grep prometheus-msteams
+kubectl -n monitoring get svc | grep prometheus-msteams
+kubectl -n monitoring get servicemonitor | grep prometheus-msteams
+```
 
 ---
 
@@ -251,7 +388,7 @@ In Grafana Explore:
 ### Grafana cannot log in via OIDC
 Common causes:
 
-- wrong issuer/auth/token/userinfo URLs
+- wrong issuer / auth / token / userinfo URLs
 - TLS errors (missing CA in the Grafana image)
 - missing `GRAFANA_OAUTH_CLIENT_SECRET` secret
 - wrong redirect URL configured in the OIDC provider
@@ -262,7 +399,7 @@ Check:
   ```bash
   kubectl -n monitoring logs deploy/prometheus-stack-grafana
   ```
-- Ensure the secret exists:
+- ensure the secret exists:
   ```bash
   kubectl -n monitoring get secret grafana-oidc-secret -o yaml
   ```
@@ -278,10 +415,80 @@ If logs mention certificate verification issues:
 Check:
 
 - service names and URLs in `additionalDataSources`
-- that Loki/Tempo services exist:
+- that Loki / Tempo services exist:
   ```bash
   kubectl -n monitoring get svc | egrep "loki|tempo|grafana|prom"
   ```
 - network policies / ingress policies (if any)
 
+### Alert rules are present but no Teams messages arrive
+Check:
+
+- that `prometheus-msteams` is running:
+  ```bash
+  kubectl -n monitoring get pods | grep prometheus-msteams
+  ```
+- bridge logs:
+  ```bash
+  kubectl -n monitoring logs deploy/prometheus-msteams --since=10m
+  ```
+- Alertmanager reload logs:
+  ```bash
+  kubectl -n monitoring logs alertmanager-prometheus-stack-vendor-alertmanager-0 --since=10m
+  ```
+- rendered Alertmanager config (generated secret):
+  ```bash
+  kubectl get secret -n monitoring alertmanager-prometheus-stack-vendor-alertmanager-generated -o json \
+  | jq -r '.data["alertmanager.yaml.gz"]' \
+  | base64 -d \
+  | gunzip -c
+  ```
+
+### Open WebUI dashboards show no data
+This setup relies on OpenTelemetry metrics flowing through Alloy into Prometheus.
+
+Check:
+
+- Open WebUI environment variables for OTEL are enabled
+- Alloy receiver / exporter configuration is correct
+- Prometheus can see `http_server_*` metrics for `job="open-webui"`
+
+### vLLM or LiteLLM dashboards show no data
+Check:
+
+- the ServiceMonitor exists
+- the Prometheus target is `up`
+- the metrics endpoint returns data
+- the dashboard uses the metric names exposed by the deployed application version
+
 ---
+
+## Operational notes
+
+The current observability and alerting setup is intended as a first operational baseline.
+
+It is recommended to review and tune over time:
+
+- latency thresholds
+- repeat intervals
+- grouping behavior
+- severity levels
+- Teams notification noise
+- dashboard queries after application upgrades
+
+As usage patterns become clearer, additional alerts can be introduced gradually.
+
+---
+
+## Summary
+
+The observability stack now includes:
+
+- metrics via Prometheus
+- dashboards via Grafana
+- logs via Loki
+- traces via Tempo
+- OTEL collection / forwarding via Alloy
+- platform alerts routed to Microsoft Teams
+
+This provides a practical baseline for monitoring GPU capacity, inference services, proxy behavior, alert delivery, and the Open WebUI application layer in a GitOps-managed cluster.
