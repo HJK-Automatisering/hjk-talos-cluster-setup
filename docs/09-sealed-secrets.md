@@ -120,7 +120,7 @@ stringData:
 kubectl create -f applications/litellm/local-secrets/litellm-secrets.yaml \
   --dry-run=client -o yaml \
 | kubeseal --format yaml \
-  --controller-name sealed-secrets \
+  --controller-name sealed-secrets-vendor \
   --controller-namespace kube-system \
 > applications/litellm/templates/sealed-litellm-secrets.yaml
 ```
@@ -129,7 +129,7 @@ kubectl create -f applications/litellm/local-secrets/litellm-secrets.yaml \
 kubectl create -f applications/litellm/local-secrets/cloudnative-pg-cluster-litellm.yaml \
   --dry-run=client -o yaml \
 | kubeseal --format yaml \
-  --controller-name sealed-secrets \
+  --controller-name sealed-secrets-vendor \
   --controller-namespace kube-system \
 > applications/litellm/templates/sealed-cloudnative-pg-secret.yaml
 ```
